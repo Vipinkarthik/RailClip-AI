@@ -6,8 +6,10 @@ import {
   FaGithub, FaEnvelope, FaChevronRight, FaDatabase, FaLayerGroup
 } from 'react-icons/fa';
 import Aurora from '../components/Aurora';
+import { useNavigate } from 'react-router-dom';
 
 export default function App() {
+  const navigate = useNavigate(); // Add this line
   const [scrolled, setScrolled] = useState(false);
 
   useEffect(() => {
@@ -78,12 +80,13 @@ export default function App() {
                 >
                   Dashboard
                 </a>
-                <a 
-                  href="#get-started" 
-                  className="text-sm px-5 py-2.5 rounded-xl font-medium bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-500 hover:to-blue-500 text-white transition-all shadow-lg shadow-purple-600/30 hover:shadow-purple-500/50"
-                >
-                  Get Started
-                </a>
+                {/* NEW CODE */}
+<button 
+  onClick={() => navigate('/login')} 
+  className="text-sm px-5 py-2.5 rounded-xl font-medium bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-500 hover:to-blue-500 text-white transition-all shadow-lg shadow-purple-600/30 hover:shadow-purple-500/50 cursor-pointer"
+>
+  Get Started
+</button>
               </div>
             </div>
           </nav>
