@@ -1,0 +1,50 @@
+# Python Cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual Environment
+venv/
+.venv/
+env/
+ENV/
+
+# Environment Variables
+.env
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Logs
+*.log
+
+# Build
+build/
+dist/
+*.egg-info/
+
+# Cache
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# IDE
+.vscode/
+.idea/
+
+# OS Files
+.DS_Store
+Thumbs.db
+
+# Temporary Files
+*.tmp
+*.temp
+
+# Model Files (Uncomment if you don't want to push them)
+# models/*.pkl
+
+# Dataset Files (Uncomment if you don't want to push them)
+# *.csv
+
+# Misc
+.python-version
