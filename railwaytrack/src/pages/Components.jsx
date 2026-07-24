@@ -138,21 +138,11 @@ export default function Components() {
 
   // Form State
   const [formData, setFormData] = useState({
-    compId: '',
-    qrId: '',
-    section: '',
-    zone: 'Southern',
-    division: 'Chennai',
-    station: '',
-    lat: '',
-    lng: '',
-    installDate: new Date().toISOString().split('T')[0],
-    manufacturer: 'Jindal Steel',
-    material: 'Spring Steel 60Si7',
-    trackType: 'Broad Gauge',
-    status: 'Active',
-    expectedLife: '15',
-    remarks: ''
+    batchNumber: '',
+    batchManufacturer: '',
+    clipsPurchased: '',
+    purchaseDate: new Date().toISOString().split('T')[0],
+    qrId: ''
   });
 
   // Modal, Drawer & Notification States
@@ -192,7 +182,7 @@ export default function Components() {
     setFormData(prev => ({ ...prev, qrId: generatedId }));
     setGeneratedQr({
       qrId: generatedId,
-      compId: formData.compId || 'CLP-NEW',
+      compId: formData.batchNumber || 'BATCH-NEW',
       timestamp: new Date().toLocaleString()
     });
   };
@@ -200,28 +190,55 @@ export default function Components() {
   // Save Component
   const handleSaveComponent = (e) => {
     e.preventDefault();
-    if (!formData.compId || !formData.qrId) {
-      alert('Please fill in Component ID and Generate QR ID first.');
+    if (!formData.batchNumber || !formData.batchManufacturer || !formData.clipsPurchased || !formData.purchaseDate) {
+      alert('Please fill in all batch details first.');
       return;
     }
 
+    const generatedQrId = formData.qrId || `QR-${Math.floor(1000 + Math.random() * 9000)}-${Math.floor(100 + Math.random() * 900)}`;
+    const batchNumberValue = String(formData.batchNumber).trim();
+
     const newComp = {
       id: String(Date.now()),
+      compId: `BATCH-${batchNumberValue}`,
+      batchNumber: Number(formData.batchNumber),
+      batchManufacturer: formData.batchManufacturer,
+      clipsPurchased: Number(formData.clipsPurchased),
+      purchaseDate: formData.purchaseDate,
+      section: `Batch ${batchNumberValue}`,
+      zone: 'Southern',
+      division: 'Chennai',
+      station: 'Purchased Batch',
+      lat: '',
+      lng: '',
+      installDate: formData.purchaseDate,
+      manufacturer: formData.batchManufacturer,
+      material: '',
+      trackType: '',
+      status: 'Active',
       ...formData,
+      qrId: generatedQrId,
+      compId: `BATCH-${batchNumberValue}`,
       health: 100,
       priority: 'Low',
       lastInspection: 'Pending Inspection'
     };
 
     setComponentsList([newComp, ...componentsList]);
-    setNotifications([{ id: Date.now(), msg: `New Clip ${newComp.compId} Registered`, time: 'Just now' }, ...notifications]);
+    setNotifications([{ id: Date.now(), msg: `New Batch ${batchNumberValue} Registered`, time: 'Just now' }, ...notifications]);
+    setGeneratedQr({
+      qrId: generatedQrId,
+      compId: `BATCH-${batchNumberValue}`,
+      timestamp: new Date().toLocaleString()
+    });
     
     // Reset Form
     setFormData({
-      compId: '', qrId: '', section: '', zone: 'Southern', division: 'Chennai',
-      station: '', lat: '', lng: '', installDate: new Date().toISOString().split('T')[0],
-      manufacturer: 'Jindal Steel', material: 'Spring Steel 60Si7', trackType: 'Broad Gauge',
-      status: 'Active', expectedLife: '15', remarks: ''
+      batchNumber: '',
+      batchManufacturer: '',
+      clipsPurchased: '',
+      purchaseDate: new Date().toISOString().split('T')[0],
+      qrId: ''
     });
     setGeneratedQr(null);
   };
@@ -442,86 +459,49 @@ export default function Components() {
               <form onSubmit={handleSaveComponent} className="space-y-4">
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   <div>
-                    <label className="text-[11px] text-slate-300 mb-1 block">Component ID *</label>
+                    <label className="text-[11px] text-slate-300 mb-1 block">Batch Number *</label>
                     <input 
-                      type="text" 
-                      name="compId"
-                      value={formData.compId}
+                      type="number" 
+                      name="batchNumber"
+                      value={formData.batchNumber}
                       onChange={handleInputChange}
-                      placeholder="e.g. CLP-009"
+                      placeholder="e.g. 101"
                       className="w-full px-3 py-2 rounded-xl bg-black/40 border border-white/10 text-white placeholder:text-slate-600 text-xs focus:outline-none focus:border-purple-500"
                       required
                     />
                   </div>
 
                   <div>
-                    <label className="text-[11px] text-slate-300 mb-1 block">Laser QR ID *</label>
-                    <div className="flex space-x-2">
-                      <input 
-                        type="text" 
-                        name="qrId"
-                        value={formData.qrId}
-                        onChange={handleInputChange}
-                        placeholder="Click Generate"
-                        className="w-full px-3 py-2 rounded-xl bg-black/40 border border-white/10 text-cyan-400 font-mono placeholder:text-slate-600 text-xs focus:outline-none"
-                        readOnly
-                      />
-                      <button 
-                        type="button"
-                        onClick={handleGenerateQr}
-                        className="px-3 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-semibold shrink-0 cursor-pointer"
-                      >
-                        Generate
-                      </button>
-                    </div>
+                    <label className="text-[11px] text-slate-300 mb-1 block">Manufacturar of the Batch *</label>
+                    <input 
+                      type="text" 
+                      name="batchManufacturer"
+                      value={formData.batchManufacturer}
+                      onChange={handleInputChange}
+                      placeholder="e.g. Jindal Steel"
+                      className="w-full px-3 py-2 rounded-xl bg-black/40 border border-white/10 text-white placeholder:text-slate-600 text-xs focus:outline-none focus:border-purple-500"
+                      required
+                    />
                   </div>
 
                   <div>
-                    <label className="text-[11px] text-slate-300 mb-1 block">Track Section *</label>
+                    <label className="text-[11px] text-slate-300 mb-1 block">No. of Clips Purchased *</label>
                     <input 
-                      type="text" 
-                      name="section"
-                      value={formData.section}
+                      type="number" 
+                      name="clipsPurchased"
+                      value={formData.clipsPurchased}
                       onChange={handleInputChange}
-                      placeholder="Sec 14, Track B"
+                      placeholder="e.g. 250"
                       className="w-full px-3 py-2 rounded-xl bg-black/40 border border-white/10 text-white text-xs focus:outline-none focus:border-purple-500"
+                      required
                     />
                   </div>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   <div>
-                    <label className="text-[11px] text-slate-300 mb-1 block">Zone</label>
-                    <select name="zone" value={formData.zone} onChange={handleInputChange} className="w-full px-3 py-2 rounded-xl bg-black/40 border border-white/10 text-white text-xs focus:outline-none">
-                      <option value="Southern">Southern</option>
-                      <option value="Northern">Northern</option>
-                      <option value="Central">Central</option>
-                      <option value="Western">Western</option>
-                      <option value="Eastern">Eastern</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="text-[11px] text-slate-300 mb-1 block">Division</label>
-                    <input type="text" name="division" value={formData.division} onChange={handleInputChange} placeholder="Chennai" className="w-full px-3 py-2 rounded-xl bg-black/40 border border-white/10 text-white text-xs" />
-                  </div>
-                  <div>
-                    <label className="text-[11px] text-slate-300 mb-1 block">Station Name</label>
-                    <input type="text" name="station" value={formData.station} onChange={handleInputChange} placeholder="Katpadi Jn" className="w-full px-3 py-2 rounded-xl bg-black/40 border border-white/10 text-white text-xs" />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                  <div>
-                    <label className="text-[11px] text-slate-300 mb-1 block">Manufacturer</label>
-                    <input type="text" name="manufacturer" value={formData.manufacturer} onChange={handleInputChange} className="w-full px-3 py-2 rounded-xl bg-black/40 border border-white/10 text-white text-xs" />
-                  </div>
-                  <div>
-                    <label className="text-[11px] text-slate-300 mb-1 block">Material Type</label>
-                    <input type="text" name="material" value={formData.material} onChange={handleInputChange} className="w-full px-3 py-2 rounded-xl bg-black/40 border border-white/10 text-white text-xs" />
-                  </div>
-                  <div>
-                    <label className="text-[11px] text-slate-300 mb-1 block">Installation Date</label>
-                    <input type="date" name="installDate" value={formData.installDate} onChange={handleInputChange} className="w-full px-3 py-2 rounded-xl bg-black/40 border border-white/10 text-white text-xs" />
+                    <label className="text-[11px] text-slate-300 mb-1 block">Date of Purchased *</label>
+                    <input type="date" name="purchaseDate" value={formData.purchaseDate} onChange={handleInputChange} className="w-full px-3 py-2 rounded-xl bg-black/40 border border-white/10 text-white text-xs" required />
                   </div>
                 </div>
 
@@ -531,41 +511,6 @@ export default function Components() {
                   </button>
                 </div>
               </form>
-            </div>
-
-            {/* QR Code Preview Card (4 Cols) */}
-            <div className="lg:col-span-4 p-6 rounded-2xl bg-slate-900/50 border border-white/10 backdrop-blur-xl flex flex-col justify-between">
-              <div>
-                <h3 className="text-sm font-bold text-white mb-1">QR Code Generator Preview</h3>
-                <p className="text-[11px] text-slate-400 mb-6">Laser engraver matrix digital tag output</p>
-
-                {generatedQr ? (
-                  <div className="p-6 rounded-2xl bg-white/5 border border-cyan-500/30 flex flex-col items-center text-center">
-                    <div className="w-32 h-32 rounded-xl bg-white p-3 flex items-center justify-center shadow-xl mb-4">
-                      <FaQrcode className="text-7xl text-black" />
-                    </div>
-                    <div className="font-mono text-cyan-400 font-bold text-sm">{generatedQr.qrId}</div>
-                    <div className="text-xs text-slate-300 mt-1">Component: {generatedQr.compId}</div>
-                    <div className="text-[10px] text-slate-500 mt-0.5">Generated: {generatedQr.timestamp}</div>
-                  </div>
-                ) : (
-                  <div className="p-8 rounded-2xl bg-black/30 border border-dashed border-white/10 flex flex-col items-center text-center">
-                    <FaQrcode className="text-5xl text-slate-600 mb-3 animate-pulse" />
-                    <p className="text-xs text-slate-400">Click "Generate" in registration form to preview laser QR code</p>
-                  </div>
-                )}
-              </div>
-
-              {generatedQr && (
-                <div className="grid grid-cols-2 gap-2 mt-4">
-                  <button onClick={() => alert('Downloading QR PNG vector file...')} className="py-2 rounded-xl bg-white/5 border border-white/10 text-white text-xs hover:bg-white/10 cursor-pointer">
-                    Download Vector
-                  </button>
-                  <button onClick={() => window.print()} className="py-2 rounded-xl bg-cyan-600 text-white text-xs hover:bg-cyan-500 font-semibold cursor-pointer">
-                    Print Laser Tag
-                  </button>
-                </div>
-              )}
             </div>
 
           </div>

@@ -596,7 +596,6 @@ export default function Dashboard() {
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             {[
               { label: 'Register New Railway Clip', icon: FaPlus, color: 'from-purple-600 to-blue-600', path: '/components' },
-              { label: 'Start Field QR Scan', icon: FaQrcode, color: 'from-cyan-600 to-teal-600', path: '/inspections' },
               { label: 'Run AI Failure Analysis', icon: FaBrain, color: 'from-blue-600 to-indigo-600', path: '/ai-analysis' },
               { label: 'Generate Analytical Reports', icon: FaFolder, color: 'from-slate-700 to-slate-800', path: '/reports' },
             ].map((btn, idx) => {
