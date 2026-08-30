@@ -6,7 +6,7 @@ import {
   FaSearch, FaBell, FaUserCircle, FaMoon, FaSun, FaBars, 
   FaTimes, FaMicrochip, FaExclamationTriangle, FaCheckCircle, 
   FaTools, FaDownload, FaPlus, FaFilter, FaMapMarkerAlt, 
-  FaDatabase, FaSync, FaServer, FaSignOutAlt, FaFolder
+  FaDatabase, FaSync, FaServer, FaSignOutAlt, FaFolder, FaUserPlus
 } from 'react-icons/fa';
 import { 
   ResponsiveContainer, LineChart, Line, AreaChart, Area, 
@@ -233,6 +233,7 @@ export default function Dashboard() {
               { label: 'Inspections', icon: FaShieldAlt, path: '/inspections' },
               { label: 'AI Analysis', icon: FaBrain, path: '/ai-analysis' },
               { label: 'Reports', icon: FaFolder, path: '/reports' },
+              { label: 'Worker Accounts', icon: FaUserPlus, path: '/worker-account' },
             ].map((item) => {
               const Icon = item.icon;
               const isActive = activeTab === item.label;

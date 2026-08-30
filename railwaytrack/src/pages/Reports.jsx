@@ -10,7 +10,7 @@ import {
   FaTools, FaCalendarAlt, FaBuilding, FaIndustry, FaCheck,
   FaArrowRight, FaLayerGroup, FaHistory, FaInfoCircle,
   FaFilePdf, FaFileExcel, FaFileCsv, FaShareAlt, FaEnvelope,
-  FaRobot, FaChartPie, FaChartBar, FaTable, FaClock
+  FaRobot, FaChartPie, FaChartBar, FaTable, FaClock, FaUserPlus
 } from 'react-icons/fa';
 import { 
   ResponsiveContainer, PieChart, Pie, Cell, 
@@ -278,6 +278,7 @@ export default function Reports() {
               { label: 'Inspections', icon: FaShieldAlt, path: '/inspections' },
               { label: 'AI Analysis', icon: FaBrain, path: '/ai-analysis' },
               { label: 'Reports', icon: FaFolder, path: '/reports' },
+              { label: 'Worker Accounts', icon: FaUserPlus, path: '/worker-account' },
             ].map((item) => {
               const Icon = item.icon;
               const isActive = activeTab === item.label;
