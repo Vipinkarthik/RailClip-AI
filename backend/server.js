@@ -5,6 +5,7 @@ require('dotenv').config();
 const authRoutes = require('./routes/authRoutes');
 const componentRoutes = require('./routes/componentRoutes');
 const workerRoutes = require('./routes/workerRoutes');
+const inspectionRoutes = require('./routes/inspectionRoutes');
 const { notFound, errorHandler } = require('./middleware/errorMiddleware');
 
 const app = express();
@@ -25,6 +26,7 @@ app.get('/api/health', (req, res) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/components', componentRoutes);
 app.use('/api/workers', workerRoutes);
+app.use('/api/inspections', inspectionRoutes);
 
 app.use(notFound);
 app.use(errorHandler);

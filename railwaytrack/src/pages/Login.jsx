@@ -202,7 +202,15 @@ export default function Login() {
     try {
       await setPersistence(auth, rememberMe ? browserLocalPersistence : browserSessionPersistence);
       const credential = await signInWithEmailAndPassword(auth, email, password);
-      const idToken = await credential.user.getIdToken();
+      const idTokenResult = await credential.user.getIdTokenResult(true);
+
+      if (idTokenResult.claims?.role === 'worker') {
+        await auth.signOut();
+        setError('Access Denied: Worker accounts are not authorized to access the admin dashboard.');
+        return;
+      }
+
+      const idToken = idTokenResult.token;
       const response = await loginUser({ idToken, rememberMe });
       const storage = rememberMe ? window.localStorage : window.sessionStorage;
 
@@ -216,6 +224,7 @@ export default function Login() {
         navigate('/dashboard');
       }, 700);
     } catch (loginError) {
+      await auth.signOut().catch(() => {});
       setError(getAuthErrorMessage(loginError));
     } finally {
       setLoading(false);

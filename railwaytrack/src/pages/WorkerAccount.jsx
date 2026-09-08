@@ -12,13 +12,15 @@ import {
   FaExclamationCircle,
   FaEye,
   FaEyeSlash,
+  FaHardHat,
   FaIdCard,
   FaKey,
   FaMobileAlt,
   FaQrcode,
   FaShieldAlt,
   FaSpinner,
-  FaUserPlus
+  FaUserPlus,
+  FaUserShield
 } from 'react-icons/fa';
 import Aurora from '../components/Aurora';
 
@@ -143,6 +145,8 @@ export default function WorkerAccount() {
   const [aadhaarNumber, setAadhaarNumber] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [dSection, setDSection] = useState('');
+  const [accessRole, setAccessRole] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -176,6 +180,16 @@ export default function WorkerAccount() {
       return;
     }
 
+    if (!dSection) {
+      setError('Please select an assigned D-Section.');
+      return;
+    }
+
+    if (!accessRole) {
+      setError('Please select an access role.');
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -184,15 +198,20 @@ export default function WorkerAccount() {
         aadhaarNumber,
         email,
         password,
+        dSection,
+        accessRole,
       });
 
+      const generatedId = response?.data?.employeeId || '';
       const createdEmail = response?.data?.email || email.toLowerCase();
-      setSuccess(`Worker account created for ${createdEmail}. Redirecting to login...`);
-      setTimeout(() => navigate('/login'), 1400);
+      setSuccess(`Worker account created! Employee ID: ${generatedId} | Email: ${createdEmail}. Redirecting to login...`);
+      setTimeout(() => navigate('/login'), 2000);
       setMobileNumber('');
       setAadhaarNumber('');
       setEmail('');
       setPassword('');
+      setDSection('');
+      setAccessRole('');
     } catch (submissionError) {
       setError(submissionError?.response?.data?.message || submissionError?.message || 'Unable to create worker account.');
     } finally {
@@ -332,7 +351,7 @@ export default function WorkerAccount() {
                   </div>
                   <h2 className="text-2xl font-bold text-white tracking-tight">Create Worker Account</h2>
                   <p className="text-xs text-slate-400 mt-1">
-                    Add the worker's mobile number, Aadhaar number, email, and password.
+                    Add worker details. Employee ID will be auto-generated.
                   </p>
                 </div>
 
@@ -426,6 +445,46 @@ export default function WorkerAccount() {
                       >
                         {showPassword ? <FaEyeSlash /> : <FaEye />}
                       </button>
+                    </div>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-xs font-medium text-slate-300 ml-1">Assigned D-Section</label>
+                    <div className="relative flex items-center">
+                      <FaHardHat className="absolute left-4 text-slate-400 text-xs pointer-events-none" />
+                      <select
+                        value={dSection}
+                        onChange={(e) => setDSection(e.target.value)}
+                        className="w-full pl-10 pr-4 py-3 rounded-xl bg-black/40 border border-white/10 text-white text-xs focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 transition-all appearance-none cursor-pointer"
+                      >
+                        <option value="" disabled className="bg-slate-900 text-slate-400">Select D-Section</option>
+                        <option value="D-1" className="bg-slate-900">D-1</option>
+                        <option value="D-2" className="bg-slate-900">D-2</option>
+                        <option value="D-3" className="bg-slate-900">D-3</option>
+                        <option value="D-4" className="bg-slate-900">D-4</option>
+                        <option value="D-5" className="bg-slate-900">D-5</option>
+                        <option value="D-6" className="bg-slate-900">D-6</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-xs font-medium text-slate-300 ml-1">Access Role</label>
+                    <div className="relative flex items-center">
+                      <FaUserShield className="absolute left-4 text-slate-400 text-xs pointer-events-none" />
+                      <select
+                        value={accessRole}
+                        onChange={(e) => setAccessRole(e.target.value)}
+                        className="w-full pl-10 pr-4 py-3 rounded-xl bg-black/40 border border-white/10 text-white text-xs focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 transition-all appearance-none cursor-pointer"
+                      >
+                        <option value="" disabled className="bg-slate-900 text-slate-400">Select Access Role</option>
+                        <option value="Trackman" className="bg-slate-900">Trackman</option>
+                        <option value="Keyman" className="bg-slate-900">Keyman</option>
+                        <option value="Gangmate" className="bg-slate-900">Gangmate</option>
+                        <option value="PWI (Permanent Way Inspector)" className="bg-slate-900">PWI (Permanent Way Inspector)</option>
+                        <option value="SSE (Senior Section Engineer)" className="bg-slate-900">SSE (Senior Section Engineer)</option>
+                        <option value="JE (Junior Engineer)" className="bg-slate-900">JE (Junior Engineer)</option>
+                      </select>
                     </div>
                   </div>
 

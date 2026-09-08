@@ -3,6 +3,58 @@ const { auth, db } = require('../config/firebase');
 
 const WORKER_DISTRICT_LABEL = 'Coimbatore';
 
+const DISTRICT_CODE_MAP = {
+	coimbatore: 'CBE',
+	chennai: 'CHN',
+	madurai: 'MDU',
+	trichy: 'TRY',
+	tiruchirappalli: 'TRY',
+	salem: 'SLM',
+	erode: 'ERD',
+	tirunelveli: 'TNV',
+	thoothukudi: 'TUT',
+	vellore: 'VLR',
+	thanjavur: 'TNJ',
+	dindigul: 'DGL',
+	kanchipuram: 'KPM',
+	cuddalore: 'CDL',
+	nagapattinam: 'NGP',
+	karur: 'KRR',
+	namakkal: 'NMK',
+	krishnagiri: 'KGI',
+	dharmapuri: 'DPI',
+	tiruvannamalai: 'TVM',
+	villupuram: 'VPM',
+};
+
+function getLocationCode(adminEmail) {
+	const normalized = String(adminEmail || '').trim().toLowerCase();
+	for (const [district, code] of Object.entries(DISTRICT_CODE_MAP)) {
+		if (normalized.includes(district)) {
+			return code;
+		}
+	}
+	return 'GEN';
+}
+
+async function generateEmployeeId(locationCode) {
+	const counterRef = db.collection('counters').doc(`employeeId_${locationCode}`);
+
+	const newCount = await db.runTransaction(async (transaction) => {
+		const counterDoc = await transaction.get(counterRef);
+		let currentCount = 0;
+		if (counterDoc.exists) {
+			currentCount = counterDoc.data().count || 0;
+		}
+		const nextCount = currentCount + 1;
+		transaction.set(counterRef, { count: nextCount, updatedAt: new Date().toISOString() }, { merge: true });
+		return nextCount;
+	});
+
+	const paddedNum = String(newCount).padStart(3, '0');
+	return `RT${locationCode}${paddedNum}`;
+}
+
 function deriveDistrictFromEmail(email) {
 	const normalizedEmail = String(email || '').trim().toLowerCase();
 
@@ -50,6 +102,8 @@ async function createWorkerAccount(req, res) {
 			aadhaarNumber,
 			email,
 			password,
+			dSection = '',
+			accessRole = '',
 		} = req.body || {};
 		const adminUid = req.user?.uid || '';
 		const adminEmail = req.user?.email || '';
@@ -106,6 +160,9 @@ async function createWorkerAccount(req, res) {
 			}
 		}
 
+		const locationCode = getLocationCode(adminEmail);
+		const employeeId = await generateEmployeeId(locationCode);
+
 		const displayName = String(fullName || normalizedEmail.split('@')[0]).trim();
 		const userRecord = await auth.createUser({
 			email: normalizedEmail,
@@ -125,6 +182,7 @@ async function createWorkerAccount(req, res) {
 		const createdAt = new Date().toISOString();
 		const workerProfile = {
 			uid: userRecord.uid,
+			employeeId,
 			email: normalizedEmail,
 			emailIsolationKey: normalizedEmail,
 			displayName,
@@ -133,6 +191,8 @@ async function createWorkerAccount(req, res) {
 			aadhaarLast4: String(aadhaarNumber).slice(-4),
 			district: districtLabel,
 			districtKey,
+			dSection: String(dSection).trim(),
+			accessRole: String(accessRole).trim(),
 			createdByUid: adminUid,
 			createdByEmail: adminEmail || null,
 			role: 'worker',
@@ -157,12 +217,15 @@ async function createWorkerAccount(req, res) {
 			message: 'Worker account created successfully.',
 			data: {
 				uid: userRecord.uid,
+				employeeId: workerProfile.employeeId,
 				email: workerProfile.email,
 				displayName: workerProfile.displayName,
 				mobileNumber: workerProfile.mobileNumber,
 				aadhaarLast4: workerProfile.aadhaarLast4,
 				district: workerProfile.district,
 				districtKey: workerProfile.districtKey,
+				dSection: workerProfile.dSection,
+				accessRole: workerProfile.accessRole,
 				role: workerProfile.role,
 				status: workerProfile.status,
 				customClaims: {
@@ -217,11 +280,14 @@ async function getMyWorkerProfile(req, res) {
 			success: true,
 			data: {
 				uid: data.uid,
+				employeeId: data.employeeId || '',
 				email: data.email,
 				displayName: data.displayName,
 				mobileNumber: data.mobileNumber,
 				district: data.district || WORKER_DISTRICT_LABEL,
 				districtKey: data.districtKey,
+				dSection: data.dSection || '',
+				accessRole: data.accessRole || '',
 				role: data.role,
 				status: data.status,
 				createdAt: data.createdAt,
