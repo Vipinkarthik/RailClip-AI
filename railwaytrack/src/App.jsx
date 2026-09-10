@@ -6,6 +6,7 @@ import Components from "./pages/Components";
 import Inspection from "./pages/Inspection";
 import AIAnalysis from "./pages/AIAnalysis";
 import Reports from "./pages/Reports";
+import WorkerAccount from "./pages/WorkerAccount";
 
 function App() {
   return (
@@ -22,6 +23,7 @@ function App() {
         <Route path="/inspections" element={<Inspection />} />
         <Route path="/ai-analysis" element={<AIAnalysis />} />
         <Route path="/reports" element={<Reports />} />
+        <Route path="/worker-account" element={<WorkerAccount />} />
       </Routes>
     </BrowserRouter>
   );

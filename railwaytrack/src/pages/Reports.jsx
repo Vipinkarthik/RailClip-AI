@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
+import { getLoggedInDistrictOfficer } from '../services/authHelper';
 import { 
   FaQrcode, FaBrain, FaCloud, FaShieldAlt, FaChartLine, 
   FaSearch, FaBell, FaUserCircle, FaBars, FaTimes, 
@@ -10,7 +11,7 @@ import {
   FaTools, FaCalendarAlt, FaBuilding, FaIndustry, FaCheck,
   FaArrowRight, FaLayerGroup, FaHistory, FaInfoCircle,
   FaFilePdf, FaFileExcel, FaFileCsv, FaShareAlt, FaEnvelope,
-  FaRobot, FaChartPie, FaChartBar, FaTable, FaClock
+  FaRobot, FaChartPie, FaChartBar, FaTable, FaClock, FaUserPlus
 } from 'react-icons/fa';
 import { 
   ResponsiveContainer, PieChart, Pie, Cell, 
@@ -158,6 +159,7 @@ const mockHealthPieData = [
    ========================================================================== */
 export default function Reports() {
   const navigate = useNavigate();
+  const districtOfficer = getLoggedInDistrictOfficer();
 
   // Navigation & Workspace State
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -278,6 +280,7 @@ export default function Reports() {
               { label: 'Inspections', icon: FaShieldAlt, path: '/inspections' },
               { label: 'AI Analysis', icon: FaBrain, path: '/ai-analysis' },
               { label: 'Reports', icon: FaFolder, path: '/reports' },
+              { label: 'Worker Accounts', icon: FaUserPlus, path: '/worker-account' },
             ].map((item) => {
               const Icon = item.icon;
               const isActive = activeTab === item.label;
@@ -347,8 +350,8 @@ export default function Reports() {
             <div className="flex items-center space-x-3 pl-3 border-l border-white/10">
               <FaUserCircle className="text-2xl text-purple-400" />
               <div className="hidden sm:flex flex-col text-left">
-                <span className="text-xs font-medium text-white leading-none">Command Analyst</span>
-                <span className="text-[10px] text-slate-400">Railway Analytics Division</span>
+                <span className="text-xs font-medium text-white leading-none">{districtOfficer.title}</span>
+                <span className="text-[10px] text-slate-400">{districtOfficer.subtitle}</span>
               </div>
             </div>
           </div>

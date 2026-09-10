@@ -1,6 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
+import { getLoggedInDistrictOfficer } from '../services/authHelper';
+import { BrowserQRCodeReader } from '@zxing/browser';
+import { lookupComponentByQr, saveInspectionRecord, listInspectionRecords } from '../api/inspections';
 import { 
   FaQrcode, FaBrain, FaCloud, FaShieldAlt, FaChartLine, 
   FaSearch, FaBell, FaUserCircle, FaBars, FaTimes, 
@@ -9,7 +12,7 @@ import {
   FaFolder, FaMicrochip, FaExclamationTriangle, FaCheckCircle, 
   FaTools, FaCalendarAlt, FaBuilding, FaIndustry, FaCheck,
   FaArrowRight, FaLayerGroup, FaHistory, FaInfoCircle, FaCamera,
-  FaUpload, FaStop, FaCloudUploadAlt, FaSun, FaCloudRain, FaSmog, FaMoon
+  FaUpload, FaStop, FaCloudUploadAlt, FaSun, FaCloudRain, FaSmog, FaMoon, FaUserPlus
 } from 'react-icons/fa';
 import { 
   ResponsiveContainer, PieChart, Pie, Cell, 
@@ -103,28 +106,139 @@ function LiquidEther({
 }
 
 /* ==========================================================================
-   REST-API READY DUMMY DATASTRUCTURES
+   REST-API READY DATASTRUCTURES & HELPERS
    ========================================================================== */
-const mockComponentDetails = {
-  qrId: 'QR-8842-109',
-  compId: 'CLP-001',
-  section: 'Sec 14, Track B',
-  zone: 'Southern',
-  division: 'Chennai',
-  station: 'Katpadi Jn',
-  lat: '12.9716° N',
-  lng: '79.1312° E',
-  installDate: '2026-01-15',
-  manufacturer: 'Jindal Steel',
-  trackType: 'Broad Gauge (1676 mm)',
-  material: 'Spring Steel 60Si7',
-  inspectionCount: 14,
-  maintenanceCount: 2,
-  lastInspectionDate: '2026-07-10',
-  currentHealth: 88,
-  currentPriority: 'Low',
-  status: 'Active'
-};
+
+async function decodeQrTextFromImageFile(file) {
+  const objectUrl = URL.createObjectURL(file);
+  try {
+    const image = await new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => resolve(img);
+      img.onerror = () => reject(new Error('Unable to load image file.'));
+      img.src = objectUrl;
+    });
+    const reader = new BrowserQRCodeReader();
+    const result = await reader.decodeFromImageElement(image);
+    return result.getText();
+  } finally {
+    URL.revokeObjectURL(objectUrl);
+  }
+}
+
+function parseChildQrText(rawText) {
+  if (!rawText || typeof rawText !== 'string') {
+    return { isValid: false, error: 'Invalid QR Code: Empty QR data.' };
+  }
+  const text = rawText.trim();
+  if (!text) {
+    return { isValid: false, error: 'Invalid QR Code: Empty QR data.' };
+  }
+
+  let batchNo = '';
+  let uClipID = '';
+
+  // 1. JSON format (with case-insensitive key normalization)
+  try {
+    const parsed = JSON.parse(text);
+    if (parsed && typeof parsed === 'object') {
+      const normalized = {};
+      for (const k of Object.keys(parsed)) {
+        normalized[k.toLowerCase().replace(/[^a-z0-9]/g, '')] = parsed[k];
+      }
+      batchNo = String(normalized.batchno || normalized.batchnumber || normalized.batch || normalized.masterqrid || '').trim();
+      uClipID = String(normalized.uclipid || normalized.clipid || normalized.compid || normalized.uclip || '').trim();
+
+      if (batchNo && uClipID) {
+        return {
+          isValid: true,
+          batchNumber: batchNo,
+          uClipId: uClipID,
+          district: normalized.district || normalized.districtname || '',
+          divisionSection: normalized.divisionsection || normalized.dsection || normalized.section || normalized.division || '',
+          fixedBy: normalized.fixedby || normalized.employee || normalized.worker || '',
+          gpsGeolocation: normalized.gpsgeolocation || normalized.geolocation || normalized.gps || (normalized.latitude && normalized.longitude ? `${normalized.latitude}, ${normalized.longitude}` : (normalized.lat && normalized.lng ? `${normalized.lat}, ${normalized.lng}` : '')),
+          manufacturer: normalized.manufacturer || normalized.purchasedfrom || '',
+          purchaseDate: normalized.purchasedate || normalized.dateofpurchase || '',
+        };
+      } else {
+        return {
+          isValid: false,
+          error: 'Invalid QR Code: Missing required fields ("batchNo" and "uClipID").',
+        };
+      }
+    }
+  } catch {}
+
+  // 2. Multiline / Key-Value / Pipe format
+  const lines = text.split(/[\r\n;]+/).map((l) => l.trim()).filter(Boolean);
+  const result = {
+    batchNumber: '',
+    uClipId: '',
+    district: '',
+    divisionSection: '',
+    fixedBy: '',
+    gpsGeolocation: '',
+    manufacturer: '',
+    purchaseDate: '',
+  };
+
+  // First pass: Direct Key: Value or Key = Value
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    const kvMatch = line.match(/^([^:=]+)[:=]\s*(.+)$/);
+    if (kvMatch) {
+      const key = kvMatch[1].trim().toLowerCase().replace(/[^a-z0-9]/g, '');
+      const val = kvMatch[2].trim();
+      if (key.includes('batch')) result.batchNumber = val;
+      else if (key.includes('clip') || key.includes('uclip')) result.uClipId = val;
+      else if (key.includes('district')) result.district = val;
+      else if (key.includes('section') || key.includes('division') || key.includes('dsection')) result.divisionSection = val;
+      else if (key.includes('fixed') || key.includes('employee') || key.includes('worker')) result.fixedBy = val;
+      else if (key.includes('gps') || key.includes('geo') || key.includes('location') || key.includes('coord')) result.gpsGeolocation = val;
+      else if (key.includes('manufacturer') || key.includes('purchasedfrom')) result.manufacturer = val;
+      else if (key.includes('purchase') || key.includes('date')) result.purchaseDate = val;
+    }
+  }
+
+  // Fallback token extraction for multiline child QR
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    if (!result.batchNumber && (line.match(/^BATCH\d+$/i) || line.match(/^MB\d+$/i) || line.toLowerCase() === 'batchnumber' || line.toLowerCase() === 'batchno')) {
+      if (line.match(/^[A-Z]+\d+$/i)) result.batchNumber = line.toUpperCase();
+      else if (lines[i + 1]) { result.batchNumber = lines[i + 1]; }
+    }
+    if (!result.uClipId && (line.match(/^[A-Z]\d{3,5}$/i) || line.match(/^RL\d{3,5}$/i) || line.toLowerCase() === 'uclipid' || line.toLowerCase() === 'clipid')) {
+      if (line.match(/^[A-Z]+\d+$/i)) result.uClipId = line.toUpperCase();
+      else if (lines[i + 1]) { result.uClipId = lines[i + 1]; }
+      else if (lines[i - 1]) { result.uClipId = lines[i - 1]; }
+    }
+    if (!result.district && line.match(/^(COIMBATORE|CHENNAI|MADURAI|SALEM|TRICHY|TIRUPPUR|ERODE|TIRUNELVELI|VELLORE)$/i)) {
+      result.district = line.toUpperCase();
+    }
+    if (!result.divisionSection && line.match(/^D-?\d+$/i)) {
+      result.divisionSection = line.toUpperCase();
+    }
+    if (!result.fixedBy && (line.includes('(RT') || line.match(/^RT[A-Z]{2,4}\d{3,5}$/i))) {
+      result.fixedBy = line;
+    }
+    if (!result.gpsGeolocation && line.match(/^-?\d+\.\d+\s*,\s*-?\d+\.\d+$/)) {
+      result.gpsGeolocation = line;
+    }
+  }
+
+  if (result.batchNumber && result.uClipId) {
+    return {
+      isValid: true,
+      ...result,
+    };
+  }
+
+  return {
+    isValid: false,
+    error: 'Invalid QR Code: Scanned QR must contain both "batchNo" and "uClipID" fields.',
+  };
+}
 
 const mockInspectionRecords = [
   { id: '1', date: '2026-07-20 11:42', inspector: 'Officer K. Sharma', condition: 'Healthy', severity: 'Low', health: 96, maintenance: 'No', status: 'Healthy', remarks: 'Fastener tension optimal. Zero micro-fractures.' },
@@ -135,8 +249,8 @@ const mockInspectionRecords = [
 ];
 
 const mockComponentTimeline = [
-  { title: 'Component Registered', time: '2026-01-10', desc: 'Laser QR code QR-8842-109 etched at factory.' },
-  { title: 'Installed on Track', time: '2026-01-15', desc: 'Anchored at Sec 14, Track B, Katpadi Jn.' },
+  { title: 'Component Registered', time: '2026-01-10', desc: 'Laser QR code C0001 etched at factory.' },
+  { title: 'Installed on Track', time: '2026-01-15', desc: 'Anchored at D-1 Section, Coimbatore Track.' },
   { title: 'Initial Telemetry Inspection', time: '2026-03-01', desc: 'Baseline health score set to 100/100.' },
   { title: 'Maintenance Logged', time: '2026-07-10', desc: 'Slight looseness corrected by team.' },
   { title: 'Latest Inspection Completed', time: '2026-07-20', desc: 'Passed inspection with 96/100 rating.' }
@@ -152,7 +266,7 @@ const mockDailyTrend = [
 const mockStatusDist = [
   { name: 'Healthy', value: 340, color: '#10B981' },
   { name: 'Warning / Loose', value: 45, color: '#F59E0B' },
-  { name: 'Critical / Cracked', value: 12, color: '#EF4444' }
+  { name: 'Critical Defect', value: 12, color: '#EF4444' },
 ];
 
 const mockSeverityDist = [
@@ -177,24 +291,31 @@ const mockHealthTrend = [
    ========================================================================== */
 export default function Inspection() {
   const navigate = useNavigate();
+  const districtOfficer = getLoggedInDistrictOfficer();
 
-  // Navigation & Workspace State
+  // Navigation & View State
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [activeTab, setActiveTab] = useState('Inspections');
   const [currentTime, setCurrentTime] = useState(new Date());
 
-  // QR Scanner States
+  // Hardware Scanner State
   const [isScanning, setIsScanning] = useState(false);
-  const [scannedSuccess, setScannedSuccess] = useState(true);
-  const [manualQrInput, setManualQrInput] = useState('QR-8842-109');
-  const [activeComponent, setActiveComponent] = useState(mockComponentDetails);
+  const [scannerStatus, setScannerStatus] = useState('Scanner ready. Waiting for Child QR...');
+  const [manualQrInput, setManualQrInput] = useState('');
+  const [scannedSuccess, setScannedSuccess] = useState(false);
+  const [activeComponent, setActiveComponent] = useState(null);
+  const [isCameraActive, setIsCameraActive] = useState(false);
+  const [cameraError, setCameraError] = useState('');
+  const videoRef = useRef(null);
+  const readerRef = useRef(null);
+  const fileInputRef = useRef(null);
 
   // Inspection Form State
   const [formState, setFormState] = useState({
     inspectionDate: new Date().toISOString().split('T')[0],
     inspectorName: 'Officer K. Sharma',
     inspectorId: 'IR-88204',
-    gpsLocation: '12.9716° N, 79.1312° E',
+    gpsLocation: '',
     condition: 'Healthy',
     maintenancePerformed: false,
     severity: 'Low',
@@ -209,14 +330,20 @@ export default function Inspection() {
 
   // Notifications State
   const [notifications, setNotifications] = useState([
-    { id: 1, msg: 'QR-8842-109 scan verified successfully', time: 'Just now' },
-    { id: 2, msg: 'XGBoost model updated failure probability', time: '5m ago' }
+    { id: 1, msg: 'Telemetry module initialized. Awaiting Child QR scan.', time: 'Just now' }
   ]);
 
-  // Clock
+  // Real-time Clock
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
     return () => clearInterval(timer);
+  }, []);
+
+  // Cleanup camera stream on unmount
+  useEffect(() => {
+    return () => {
+      stopCamera();
+    };
   }, []);
 
   // Navigation Click Handler
@@ -234,35 +361,227 @@ export default function Inspection() {
     }));
   };
 
-  // Simulate QR Scan Completion
-  const handleTriggerScan = () => {
-    setIsScanning(true);
-    setTimeout(() => {
-      setIsScanning(false);
+  // Central QR Process Handler (from Camera, Upload, or Manual Input)
+  const handleProcessQrCode = async (decodedText) => {
+    setIsScanning(false);
+    stopCamera();
+    setCameraError('');
+
+    try {
+      const parsed = parseChildQrText(decodedText);
+
+      // Strict validation: must contain batchNo and uClipID
+      if (!parsed.isValid) {
+        const errorMsg = parsed.error || 'Invalid QR Code: Scanned QR must contain both "batchNo" and "uClipID" fields.';
+        setCameraError(errorMsg);
+        setScannerStatus(errorMsg);
+        setScannedSuccess(false);
+        setActiveComponent(null);
+        setNotifications(prev => [
+          { id: Date.now(), msg: `⚠️ ${errorMsg}`, time: 'Just now' },
+          ...prev
+        ]);
+        return;
+      }
+
+      setScannerStatus('Looking up clip & master batch in database...');
+      let profileData = null;
+
+      try {
+        const res = await lookupComponentByQr({
+          qrText: decodedText,
+          ...parsed,
+        });
+        if (res?.success && res.data) {
+          profileData = res.data;
+        } else if (res?.message) {
+          setCameraError(res.message);
+          setScannerStatus(res.message);
+          setScannedSuccess(false);
+          setActiveComponent(null);
+          return;
+        }
+      } catch (lookupErr) {
+        console.warn('Remote lookup fallback:', lookupErr);
+      }
+
+      if (!profileData) {
+        profileData = {
+          batchNumber: parsed.batchNumber || 'N/A',
+          uClipId: parsed.uClipId || 'N/A',
+          district: parsed.district || 'N/A',
+          divisionSection: parsed.divisionSection || 'N/A',
+          fixedBy: parsed.fixedBy || 'N/A',
+          gpsGeolocation: parsed.gpsGeolocation || 'N/A',
+          manufacturer: parsed.manufacturer || 'N/A',
+          purchaseDate: parsed.purchaseDate || 'N/A',
+          status: 'Active',
+          health: 100,
+          priority: 'Low',
+          section: parsed.divisionSection || 'N/A',
+          zone: 'N/A',
+          division: 'N/A',
+          station: 'N/A',
+          trackType: 'Broad Gauge (1676 mm)',
+          material: 'Spring Steel 60Si7',
+          inspectionCount: 0,
+          maintenanceCount: 0,
+          lastInspectionDate: new Date().toISOString().split('T')[0],
+        };
+      }
+
+      setActiveComponent(profileData);
+      setManualQrInput(profileData.uClipId !== 'N/A' ? profileData.uClipId : decodedText);
       setScannedSuccess(true);
-      setActiveComponent(mockComponentDetails);
-      setNotifications(prev => [{ id: Date.now(), msg: `Scanned ${manualQrInput} successfully`, time: 'Just now' }, ...prev]);
-    }, 1500);
+      setScannerStatus(`Verified ${profileData.uClipId} (Batch: ${profileData.batchNumber})`);
+
+      // Autofill GPS location
+      if (profileData.gpsGeolocation && profileData.gpsGeolocation !== 'N/A') {
+        setFormState(prev => ({
+          ...prev,
+          gpsLocation: profileData.gpsGeolocation,
+        }));
+      }
+
+      setNotifications(prev => [
+        { 
+          id: Date.now(), 
+          msg: `Retrieved: ${profileData.uClipId} | Batch: ${profileData.batchNumber} | Manufacturer: ${profileData.manufacturer} | Purchased: ${profileData.purchaseDate}`, 
+          time: 'Just now' 
+        }, 
+        ...prev
+      ]);
+    } catch (err) {
+      const errMsg = 'Invalid QR Code: ' + (err.message || 'Required fields missing');
+      setCameraError(errMsg);
+      setScannerStatus(errMsg);
+      setScannedSuccess(false);
+      setActiveComponent(null);
+    }
+  };
+
+  // Live Camera Scanner
+  const startCamera = async () => {
+    setIsScanning(true);
+    setIsCameraActive(true);
+    setCameraError('');
+    setScannedSuccess(false);
+    setScannerStatus('Point camera at Child QR Code...');
+
+    try {
+      const codeReader = new BrowserQRCodeReader();
+      readerRef.current = codeReader;
+
+      const videoInputDevices = await BrowserQRCodeReader.listVideoInputDevices();
+      const selectedDeviceId = videoInputDevices.length > 0 
+        ? videoInputDevices[videoInputDevices.length - 1].deviceId 
+        : undefined;
+
+      await codeReader.decodeFromVideoDevice(
+        selectedDeviceId,
+        videoRef.current,
+        (result) => {
+          if (result) {
+            const text = result.getText();
+            codeReader.reset();
+            setIsCameraActive(false);
+            handleProcessQrCode(text);
+          }
+        }
+      );
+    } catch (err) {
+      setCameraError('Camera unavailable: ' + (err.message || 'Permission denied'));
+      setIsScanning(false);
+      setIsCameraActive(false);
+      setScannerStatus('Camera access failed. Please try Uploading QR Image.');
+    }
+  };
+
+  const stopCamera = () => {
+    if (readerRef.current) {
+      try {
+        readerRef.current.reset();
+      } catch {}
+      readerRef.current = null;
+    }
+    setIsCameraActive(false);
+    setIsScanning(false);
+  };
+
+  // Upload QR Image
+  const handleUploadQrClick = () => {
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
+    }
+  };
+
+  const handleFileUpload = async (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setIsScanning(true);
+    setScannerStatus(`Decoding image: ${file.name}...`);
+    try {
+      const decodedText = await decodeQrTextFromImageFile(file);
+      await handleProcessQrCode(decodedText);
+    } catch (err) {
+      setIsScanning(false);
+      alert('Could not decode QR code from image. Please ensure the QR code is clearly visible.');
+      setScannerStatus('Image QR decode failed. Try another image or camera.');
+    } finally {
+      event.target.value = '';
+    }
+  };
+
+  // Manual Trigger / Query
+  const handleTriggerScan = () => {
+    if (!manualQrInput.trim()) {
+      alert('Please enter a QR code or Clip ID');
+      return;
+    }
+    handleProcessQrCode(manualQrInput.trim());
   };
 
   // Save Inspection
-  const handleSaveInspection = (e) => {
+  const handleSaveInspection = async (e) => {
     e.preventDefault();
+
+    if (!activeComponent) {
+      alert('Please scan or upload a Child QR code first before saving an inspection.');
+      return;
+    }
+
     const newRecord = {
       id: String(Date.now()),
       date: `${formState.inspectionDate} ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`,
       inspector: formState.inspectorName,
+      inspectorId: formState.inspectorId,
+      gpsLocation: formState.gpsLocation || activeComponent.gpsGeolocation || '',
       condition: formState.condition,
       severity: formState.severity,
       health: formState.condition === 'Healthy' ? 98 : formState.condition === 'Loose' ? 75 : 40,
       maintenance: formState.maintenancePerformed ? 'Yes' : 'No',
+      maintenancePerformed: formState.maintenancePerformed,
       status: formState.condition === 'Healthy' ? 'Healthy' : formState.condition === 'Loose' ? 'Warning' : 'Critical',
-      remarks: formState.remarks
+      remarks: formState.remarks,
+      batchNumber: activeComponent.batchNumber || 'N/A',
+      uClipId: activeComponent.uClipId || 'N/A',
+      district: activeComponent.district || 'N/A',
+      divisionSection: activeComponent.divisionSection || 'N/A',
+      fixedBy: activeComponent.fixedBy || 'N/A',
+      manufacturer: activeComponent.manufacturer || 'N/A',
+      purchaseDate: activeComponent.purchaseDate || 'N/A',
     };
 
+    try {
+      await saveInspectionRecord(newRecord);
+    } catch (saveErr) {
+      console.warn('Backend save fallback:', saveErr);
+    }
+
     setHistoryList([newRecord, ...historyList]);
-    setNotifications(prev => [{ id: Date.now(), msg: `Inspection logged for ${activeComponent.compId}`, time: 'Just now' }, ...prev]);
-    alert('Inspection successfully saved to Cloud Firestore!');
+    setNotifications(prev => [{ id: Date.now(), msg: `Inspection logged for Clip ${activeComponent.uClipId || 'Component'}`, time: 'Just now' }, ...prev]);
+    alert(`Inspection successfully logged for Clip ${activeComponent.uClipId || 'N/A'} (${activeComponent.batchNumber || 'N/A'})!`);
   };
 
   return (
@@ -325,6 +644,7 @@ export default function Inspection() {
               { label: 'Inspections', icon: FaShieldAlt, path: '/inspections' },
               { label: 'AI Analysis', icon: FaBrain, path: '/ai-analysis' },
               { label: 'Reports', icon: FaFolder, path: '/reports' },
+              { label: 'Worker Accounts', icon: FaUserPlus, path: '/worker-account' },
             ].map((item) => {
               const Icon = item.icon;
               const isActive = activeTab === item.label;
@@ -394,8 +714,8 @@ export default function Inspection() {
             <div className="flex items-center space-x-3 pl-3 border-l border-white/10">
               <FaUserCircle className="text-2xl text-purple-400" />
               <div className="hidden sm:flex flex-col text-left">
-                <span className="text-xs font-medium text-white leading-none">Officer K. Sharma</span>
-                <span className="text-[10px] text-slate-400">Chief Track Inspector</span>
+                <span className="text-xs font-medium text-white leading-none">{districtOfficer.title}</span>
+                <span className="text-[10px] text-slate-400">{districtOfficer.subtitle}</span>
               </div>
             </div>
           </div>
@@ -404,35 +724,7 @@ export default function Inspection() {
         {/* WORKSPACE BODY */}
         <main className="p-8 space-y-8 max-w-7xl w-full mx-auto">
 
-          {/* 1. TOP STATS CARDS */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
-            {[
-              { title: "Today's Inspections", count: '48', trend: '+12%', isPositive: true, icon: FaCalendarAlt, color: 'from-blue-600 to-cyan-400' },
-              { title: 'Pending Inspections', count: '14', trend: '-5%', isPositive: true, icon: FaSync, color: 'from-amber-600 to-yellow-400' },
-              { title: 'Completed Inspections', count: '1,280', trend: '+18%', isPositive: true, icon: FaCheckCircle, color: 'from-emerald-600 to-teal-400' },
-              { title: 'Critical Components', count: '3', trend: '+1', isPositive: false, icon: FaExclamationTriangle, color: 'from-red-600 to-rose-400' },
-              { title: 'Healthy Components', count: '1,215', trend: '95%', isPositive: true, icon: FaShieldAlt, color: 'from-purple-600 to-indigo-400' },
-              { title: 'Avg Health Score', count: '91.4', trend: '+2.1', isPositive: true, icon: FaChartLine, color: 'from-cyan-600 to-blue-500' },
-            ].map((stat, idx) => {
-              const Icon = stat.icon;
-              return (
-                <div key={idx} className="p-5 rounded-2xl bg-slate-900/50 border border-white/10 backdrop-blur-xl hover:border-purple-500/40 transition-all">
-                  <div className="flex items-center justify-between mb-3">
-                    <div className={`p-2.5 rounded-xl bg-gradient-to-tr ${stat.color} text-white shadow-md`}>
-                      <Icon className="text-base" />
-                    </div>
-                    <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded ${
-                      stat.isPositive ? 'bg-emerald-500/15 text-emerald-400' : 'bg-red-500/15 text-red-400'
-                    }`}>
-                      {stat.trend}
-                    </span>
-                  </div>
-                  <div className="text-2xl font-bold text-white mb-1">{stat.count}</div>
-                  <div className="text-[11px] text-slate-400 truncate">{stat.title}</div>
-                </div>
-              );
-            })}
-          </div>
+
 
           {/* 2. QR SCANNER & COMPONENT INFO ROW */}
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
@@ -445,50 +737,92 @@ export default function Inspection() {
                     <FaQrcode className="text-cyan-400" />
                     Scan Railway Clip Laser QR
                   </h2>
-                  <span className="text-[10px] px-2 py-0.5 rounded bg-purple-500/20 text-purple-300 font-mono">
-                    CAMERA ACTIVE
+                  <span className={`text-[10px] px-2 py-0.5 rounded font-mono ${
+                    isCameraActive 
+                      ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 animate-pulse'
+                      : 'bg-purple-500/20 text-purple-300'
+                  }`}>
+                    {isCameraActive ? 'LIVE CAMERA SCANNING' : 'SCANNER READY'}
                   </span>
                 </div>
 
-                {/* Camera View Finder Placeholder */}
+                {/* Hidden File Input for QR Upload */}
+                <input 
+                  type="file" 
+                  ref={fileInputRef} 
+                  accept="image/*" 
+                  className="hidden" 
+                  onChange={handleFileUpload} 
+                />
+
+                {/* Camera View Finder / Video Box */}
                 <div className="relative w-full h-52 rounded-2xl bg-black/60 border border-white/10 flex flex-col items-center justify-center overflow-hidden mb-4">
-                  {isScanning ? (
-                    <div className="flex flex-col items-center space-y-3">
+                  {/* Live Video Stream */}
+                  <video 
+                    ref={videoRef} 
+                    className={`absolute inset-0 w-full h-full object-cover ${isCameraActive ? 'block' : 'hidden'}`} 
+                    autoPlay 
+                    muted 
+                    playsInline 
+                  />
+
+                  {isCameraActive ? (
+                    <div className="absolute inset-0 pointer-events-none flex flex-col items-center justify-center">
+                      <div className="w-36 h-36 border-2 border-cyan-400/80 rounded-xl relative animate-pulse">
+                        <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-transparent via-cyan-300 to-transparent animate-bounce" />
+                      </div>
+                      <span className="mt-2 text-[11px] text-cyan-300 font-mono bg-black/70 px-2.5 py-1 rounded-full border border-cyan-500/30">
+                        Align QR within frame
+                      </span>
+                    </div>
+                  ) : isScanning ? (
+                    <div className="flex flex-col items-center space-y-3 z-10">
                       <div className="w-12 h-12 border-4 border-cyan-400 border-t-transparent rounded-full animate-spin" />
-                      <span className="text-xs text-cyan-300 font-mono">Decoding Matrix QR...</span>
+                      <span className="text-xs text-cyan-300 font-mono">Decoding Child QR...</span>
                     </div>
                   ) : scannedSuccess ? (
-                    <div className="flex flex-col items-center space-y-2">
-                      <div className="w-16 h-16 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-3xl border border-emerald-500/40">
+                    <div className="flex flex-col items-center space-y-2 z-10 px-4 text-center">
+                      <div className="w-14 h-14 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-2xl border border-emerald-500/40">
                         <FaCheck />
                       </div>
-                      <span className="text-xs text-emerald-400 font-mono font-bold">QR VERIFIED & DECODED</span>
-                      <span className="text-[10px] text-slate-400">{manualQrInput}</span>
+                      <span className="text-xs text-emerald-400 font-mono font-bold">QR VERIFIED & RETRIEVED</span>
+                      <span className="text-sm font-bold font-mono text-cyan-300">{activeComponent?.uClipId || manualQrInput}</span>
+                      <span className="text-[10px] text-slate-400">Batch: {activeComponent?.batchNumber || 'N/A'}</span>
                     </div>
                   ) : (
-                    <div className="flex flex-col items-center space-y-2 text-slate-500">
-                      <FaCamera className="text-4xl animate-pulse" />
-                      <span className="text-xs">Align Laser QR code inside scanner frame</span>
+                    <div className="flex flex-col items-center space-y-2 text-slate-500 z-10">
+                      <FaCamera className="text-4xl animate-pulse text-slate-400" />
+                      <span className="text-xs text-slate-400">Scan via camera or upload QR image file</span>
                     </div>
                   )}
 
                   {/* Corner Target Markers */}
-                  <div className="absolute top-3 left-3 w-4 h-4 border-l-2 border-t-2 border-cyan-400" />
-                  <div className="absolute top-3 right-3 w-4 h-4 border-r-2 border-t-2 border-cyan-400" />
-                  <div className="absolute bottom-3 left-3 w-4 h-4 border-l-2 border-b-2 border-cyan-400" />
-                  <div className="absolute bottom-3 right-3 w-4 h-4 border-r-2 border-b-2 border-cyan-400" />
+                  <div className="absolute top-3 left-3 w-4 h-4 border-l-2 border-t-2 border-cyan-400 z-10" />
+                  <div className="absolute top-3 right-3 w-4 h-4 border-r-2 border-t-2 border-cyan-400 z-10" />
+                  <div className="absolute bottom-3 left-3 w-4 h-4 border-l-2 border-b-2 border-cyan-400 z-10" />
+                  <div className="absolute bottom-3 right-3 w-4 h-4 border-r-2 border-b-2 border-cyan-400 z-10" />
                 </div>
+
+                {cameraError && (
+                  <div className="mb-3 p-2.5 rounded-xl bg-red-500/15 border border-red-500/30 text-red-300 text-xs flex items-center gap-2">
+                    <FaExclamationTriangle className="text-red-400 shrink-0" />
+                    <span>{cameraError}</span>
+                  </div>
+                )}
 
                 {/* Manual Input */}
                 <div className="space-y-2">
-                  <label className="text-[11px] text-slate-400 block">Or enter Laser QR ID manually</label>
+                  <div className="flex items-center justify-between">
+                    <label className="text-[11px] text-slate-400 block">Or enter QR code / Clip ID</label>
+                    <span className="text-[10px] font-mono text-slate-500">{scannerStatus}</span>
+                  </div>
                   <div className="flex space-x-2">
                     <input 
                       type="text" 
                       value={manualQrInput}
                       onChange={(e) => setManualQrInput(e.target.value)}
-                      placeholder="e.g. QR-8842-109"
-                      className="flex-1 px-3 py-2 rounded-xl bg-black/40 border border-white/10 text-cyan-400 font-mono text-xs focus:outline-none"
+                      placeholder="e.g. C0001 or BATCH001"
+                      className="flex-1 px-3 py-2 rounded-xl bg-black/40 border border-white/10 text-cyan-400 font-mono text-xs focus:outline-none focus:border-cyan-500"
                     />
                     <button onClick={handleTriggerScan} className="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-semibold shrink-0 cursor-pointer">
                       Query
@@ -497,12 +831,33 @@ export default function Inspection() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-2 mt-4 pt-4 border-t border-white/5">
-                <button onClick={handleTriggerScan} className="py-2.5 rounded-xl bg-gradient-to-r from-purple-600 to-blue-600 text-white text-xs font-semibold flex items-center justify-center space-x-2 cursor-pointer">
-                  <FaCamera />
-                  <span>Start Camera</span>
-                </button>
-                <button onClick={() => alert('Simulating image upload...')} className="py-2.5 rounded-xl bg-white/5 border border-white/10 text-white text-xs font-semibold flex items-center justify-center space-x-2 hover:bg-white/10 cursor-pointer">
+              {/* Action Buttons: Scan + Upload */}
+              <div className="grid grid-cols-2 gap-3 mt-4 pt-4 border-t border-white/5">
+                {isCameraActive ? (
+                  <button 
+                    type="button" 
+                    onClick={stopCamera} 
+                    className="py-2.5 px-3 rounded-xl bg-red-500/20 border border-red-500/40 text-red-300 text-xs font-semibold flex items-center justify-center space-x-2 hover:bg-red-500/30 cursor-pointer transition-all"
+                  >
+                    <FaStop />
+                    <span>Stop Camera</span>
+                  </button>
+                ) : (
+                  <button 
+                    type="button" 
+                    onClick={startCamera} 
+                    className="py-2.5 px-3 rounded-xl bg-gradient-to-r from-purple-600 to-blue-600 text-white text-xs font-semibold flex items-center justify-center space-x-2 hover:opacity-95 cursor-pointer shadow-lg shadow-purple-600/30 transition-all"
+                  >
+                    <FaCamera />
+                    <span>Start Camera</span>
+                  </button>
+                )}
+
+                <button 
+                  type="button" 
+                  onClick={handleUploadQrClick} 
+                  className="py-2.5 px-3 rounded-xl bg-cyan-500/15 border border-cyan-400/30 text-cyan-300 text-xs font-semibold flex items-center justify-center space-x-2 hover:bg-cyan-500/25 cursor-pointer transition-all"
+                >
                   <FaUpload />
                   <span>Upload QR Image</span>
                 </button>
@@ -511,306 +866,112 @@ export default function Inspection() {
 
             {/* Component Information Card (7 cols) */}
             <div className="lg:col-span-7 p-6 rounded-2xl bg-slate-900/50 border border-white/10 backdrop-blur-xl flex flex-col justify-between">
-              <div>
-                <div className="flex items-center justify-between mb-4">
-                  <div>
-                    <h3 className="text-sm font-bold text-white flex items-center gap-2">
-                      Retrieved Clip Profile
-                      <span className="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 text-[10px] font-mono">
-                        {activeComponent.status}
-                      </span>
-                    </h3>
-                    <p className="text-[11px] text-slate-400">Decoded from Firebase Firestore</p>
+              {!activeComponent ? (
+                <div className="flex-1 flex flex-col items-center justify-center text-center p-8 space-y-4 my-auto">
+                  <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-purple-600/20 to-cyan-500/20 border border-purple-500/30 text-cyan-300 flex items-center justify-center text-3xl shadow-lg">
+                    <FaQrcode />
                   </div>
-                  <div className="text-right">
-                    <div className="text-lg font-bold text-cyan-400 font-mono">{activeComponent.qrId}</div>
-                    <div className="text-[10px] text-slate-400">ID: {activeComponent.compId}</div>
+                  <div className="max-w-md space-y-1">
+                    <h3 className="text-base font-bold text-white">Awaiting Child QR Scan or Upload</h3>
+                    <p className="text-xs text-slate-400 leading-relaxed">
+                      Start the camera or click <span className="text-cyan-300 font-semibold">Upload QR Image</span> to decode the Child QR code. Telemetry data, employee details, and the registered <span className="text-amber-300 font-semibold">Manufacturer</span> from the master batch will be displayed automatically.
+                    </p>
                   </div>
-                </div>
-
-                {/* Details Grid */}
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs">
-                  <div className="p-3 rounded-xl bg-black/40 border border-white/5">
-                    <span className="text-slate-500 text-[10px] block">Track Section</span>
-                    <span className="font-semibold text-white">{activeComponent.section}</span>
-                  </div>
-                  <div className="p-3 rounded-xl bg-black/40 border border-white/5">
-                    <span className="text-slate-500 text-[10px] block">Zone / Division</span>
-                    <span className="font-semibold text-white">{activeComponent.zone} / {activeComponent.division}</span>
-                  </div>
-                  <div className="p-3 rounded-xl bg-black/40 border border-white/5">
-                    <span className="text-slate-500 text-[10px] block">Station</span>
-                    <span className="font-semibold text-white">{activeComponent.station}</span>
-                  </div>
-                  <div className="p-3 rounded-xl bg-black/40 border border-white/5">
-                    <span className="text-slate-500 text-[10px] block">GPS Coordinates</span>
-                    <span className="font-mono text-cyan-300 text-[11px]">{activeComponent.lat}, {activeComponent.lng}</span>
-                  </div>
-                  <div className="p-3 rounded-xl bg-black/40 border border-white/5">
-                    <span className="text-slate-500 text-[10px] block">Installation Date</span>
-                    <span className="font-mono text-slate-300">{activeComponent.installDate}</span>
-                  </div>
-                  <div className="p-3 rounded-xl bg-black/40 border border-white/5">
-                    <span className="text-slate-500 text-[10px] block">Manufacturer</span>
-                    <span className="font-semibold text-white">{activeComponent.manufacturer}</span>
+                  <div className="flex items-center gap-2 text-[11px] font-mono text-slate-400 bg-black/40 px-3.5 py-1.5 rounded-full border border-white/5">
+                    <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse" />
+                    <span>No dummy data &bull; Waiting for Child QR input</span>
                   </div>
                 </div>
-
-                <div className="grid grid-cols-3 gap-3 mt-3 text-xs">
-                  <div className="p-3 rounded-xl bg-purple-900/20 border border-purple-500/20 text-center">
-                    <span className="text-slate-400 text-[10px] block">Total Inspections</span>
-                    <span className="text-lg font-bold text-purple-300">{activeComponent.inspectionCount}</span>
-                  </div>
-                  <div className="p-3 rounded-xl bg-blue-900/20 border border-blue-500/20 text-center">
-                    <span className="text-slate-400 text-[10px] block">Current Health</span>
-                    <span className="text-lg font-bold text-emerald-400">{activeComponent.currentHealth}/100</span>
-                  </div>
-                  <div className="p-3 rounded-xl bg-cyan-900/20 border border-cyan-500/20 text-center">
-                    <span className="text-slate-400 text-[10px] block">AI Priority</span>
-                    <span className="text-lg font-bold text-cyan-400">{activeComponent.currentPriority}</span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="mt-4 pt-3 border-t border-white/5 flex items-center justify-between text-[11px] text-slate-400">
-                <span>Last Inspected: <strong className="text-white">{activeComponent.lastInspectionDate}</strong></span>
-                <span>Material: <strong className="text-slate-300">{activeComponent.material}</strong></span>
-              </div>
-            </div>
-
-          </div>
-
-          {/* 3. INSPECTION FORM & LIVE SUMMARY ROW */}
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-            
-            {/* Inspection Form (8 cols) */}
-            <div className="lg:col-span-8 p-6 rounded-2xl bg-slate-900/50 border border-white/10 backdrop-blur-xl">
-              <h3 className="text-sm font-bold text-white mb-1">Record Field Inspection Data</h3>
-              <p className="text-[11px] text-slate-400 mb-6">Log clip physical state for AI telemetry analysis</p>
-
-              <form onSubmit={handleSaveInspection} className="space-y-4">
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                  <div>
-                    <label className="text-[11px] text-slate-300 mb-1 block">Inspection Date</label>
-                    <input type="date" name="inspectionDate" value={formState.inspectionDate} onChange={handleInputChange} className="w-full px-3 py-2 rounded-xl bg-black/40 border border-white/10 text-white text-xs" />
-                  </div>
-                  <div>
-                    <label className="text-[11px] text-slate-300 mb-1 block">Inspector Name</label>
-                    <input type="text" name="inspectorName" value={formState.inspectorName} onChange={handleInputChange} className="w-full px-3 py-2 rounded-xl bg-black/40 border border-white/10 text-white text-xs" />
-                  </div>
-                  <div>
-                    <label className="text-[11px] text-slate-300 mb-1 block">Inspector Badge ID</label>
-                    <input type="text" name="inspectorId" value={formState.inspectorId} onChange={handleInputChange} className="w-full px-3 py-2 rounded-xl bg-black/40 border border-white/10 text-white text-xs" />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                  <div>
-                    <label className="text-[11px] text-slate-300 mb-1 block">Clip Condition *</label>
-                    <select name="condition" value={formState.condition} onChange={handleInputChange} className="w-full px-3 py-2 rounded-xl bg-black/40 border border-white/10 text-white text-xs focus:outline-none">
-                      <option value="Healthy">Healthy / Normal</option>
-                      <option value="Loose">Loose / Dislodged</option>
-                      <option value="Worn">Worn / Surface Wear</option>
-                      <option value="Cracked">Cracked</option>
-                      <option value="Corroded">Corroded</option>
-                      <option value="Broken">Broken / Severed</option>
-                      <option value="Replacement Required">Replacement Required</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="text-[11px] text-slate-300 mb-1 block">Severity Level *</label>
-                    <select name="severity" value={formState.severity} onChange={handleInputChange} className="w-full px-3 py-2 rounded-xl bg-black/40 border border-white/10 text-white text-xs focus:outline-none">
-                      <option value="Low">Low Risk</option>
-                      <option value="Medium">Medium Risk</option>
-                      <option value="High">High Risk</option>
-                      <option value="Critical">Critical Alert</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="text-[11px] text-slate-300 mb-1 block">Weather Conditions</label>
-                    <select name="weather" value={formState.weather} onChange={handleInputChange} className="w-full px-3 py-2 rounded-xl bg-black/40 border border-white/10 text-white text-xs focus:outline-none">
-                      <option value="Sunny">Clear / Sunny</option>
-                      <option value="Rain">Rain / Monsoon</option>
-                      <option value="Fog">Heavy Fog</option>
-                      <option value="Night">Night Operation</option>
-                    </select>
-                  </div>
-                </div>
-
-                <div className="flex items-center space-x-3 p-3 rounded-xl bg-black/40 border border-white/5">
-                  <input type="checkbox" id="maint" name="maintenancePerformed" checked={formState.maintenancePerformed} onChange={handleInputChange} className="rounded accent-purple-600" />
-                  <label htmlFor="maint" className="text-xs text-slate-300 cursor-pointer">Immediate Maintenance or Tightening Performed On-Site</label>
-                </div>
-
+              ) : (
                 <div>
-                  <label className="text-[11px] text-slate-300 mb-1 block">Inspector Field Remarks</label>
-                  <textarea name="remarks" value={formState.remarks} onChange={handleInputChange} rows={3} placeholder="Enter observations..." className="w-full px-3 py-2 rounded-xl bg-black/40 border border-white/10 text-white text-xs focus:outline-none" />
-                </div>
-
-                <div className="flex justify-end space-x-3 pt-2">
-                  <button type="submit" className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-purple-600 via-blue-600 to-cyan-500 text-white text-xs font-semibold shadow-lg shadow-purple-600/30 hover:opacity-90 cursor-pointer">
-                    Save Inspection to Cloud
-                  </button>
-                </div>
-              </form>
-            </div>
-
-            {/* AI Prediction Preview (4 cols) */}
-            <div className="lg:col-span-4 p-6 rounded-2xl bg-gradient-to-br from-purple-900/30 via-slate-900 to-black border border-purple-500/30 backdrop-blur-xl flex flex-col justify-between">
-              <div>
-                <div className="flex items-center space-x-2 text-cyan-400 font-mono text-xs mb-3">
-                  <FaBrain className="animate-pulse" />
-                  <span>XGBOOST MODEL PREVIEW</span>
-                </div>
-                <h3 className="text-sm font-bold text-white mb-2">Predicted Health & Maintenance</h3>
-
-                {/* Score Gauge Circle */}
-                <div className="my-6 flex flex-col items-center justify-center">
-                  <div className="relative w-32 h-32 rounded-full border-4 border-cyan-400/20 flex items-center justify-center bg-black/40 shadow-inner">
-                    <div className="text-center">
-                      <span className="text-3xl font-extrabold text-white">92</span>
-                      <span className="text-xs text-slate-400 block font-mono">/ 100</span>
+                  <div className="flex items-center justify-between mb-4">
+                    <div>
+                      <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                        Retrieved Clip Profile
+                        <span className="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 text-[10px] font-mono border border-emerald-500/30">
+                          {activeComponent.status || 'Active'}
+                        </span>
+                      </h3>
+                      <p className="text-[11px] text-slate-400">Decoded from Child QR & Firestore Master Batch Registry</p>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-xl font-bold text-cyan-400 font-mono">{activeComponent.uClipId || 'N/A'}</div>
+                      <div className="text-[10px] font-mono text-purple-300">Master Batch: {activeComponent.batchNumber || 'N/A'}</div>
                     </div>
                   </div>
-                  <span className="text-xs font-semibold text-emerald-400 mt-2">OPTIMAL INTEGRITY</span>
+
+                  {/* 8-Grid of Details: Batch, uClip ID, District, Section, Fixed By, GPS, Manufacturer, Purchase Date */}
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-xs">
+                    <div className="p-2.5 rounded-xl bg-black/40 border border-white/5">
+                      <span className="text-slate-500 text-[10px] uppercase font-mono block">Batch Number</span>
+                      <span className="font-semibold font-mono text-cyan-300">{activeComponent.batchNumber || 'N/A'}</span>
+                    </div>
+
+                    <div className="p-2.5 rounded-xl bg-black/40 border border-white/5">
+                      <span className="text-slate-500 text-[10px] uppercase font-mono block">uClip ID</span>
+                      <span className="font-semibold font-mono text-emerald-400">{activeComponent.uClipId || 'N/A'}</span>
+                    </div>
+
+                    <div className="p-2.5 rounded-xl bg-black/40 border border-white/5">
+                      <span className="text-slate-500 text-[10px] uppercase font-mono block">District</span>
+                      <span className="font-semibold text-white">{activeComponent.district || 'N/A'}</span>
+                    </div>
+
+                    <div className="p-2.5 rounded-xl bg-black/40 border border-white/5">
+                      <span className="text-slate-500 text-[10px] uppercase font-mono block">Division / Section</span>
+                      <span className="font-semibold text-white">{activeComponent.divisionSection || activeComponent.section || 'N/A'}</span>
+                    </div>
+
+                    <div className="p-2.5 rounded-xl bg-black/40 border border-white/5">
+                      <span className="text-slate-500 text-[10px] uppercase font-mono block">Fixed By (Employee)</span>
+                      <span className="font-semibold text-purple-300">{activeComponent.fixedBy || 'N/A'}</span>
+                    </div>
+
+                    <div className="p-2.5 rounded-xl bg-black/40 border border-white/5">
+                      <span className="text-slate-500 text-[10px] uppercase font-mono block">GPS Geolocation</span>
+                      <span className="font-mono text-cyan-300 text-[11px] truncate block" title={activeComponent.gpsGeolocation || 'N/A'}>
+                        {activeComponent.gpsGeolocation || 'N/A'}
+                      </span>
+                    </div>
+
+                    <div className="p-2.5 rounded-xl bg-black/40 border border-amber-500/20 bg-amber-500/5">
+                      <span className="text-amber-400 text-[10px] uppercase font-mono block font-bold">Purchased From (Manufacturer)</span>
+                      <span className="font-bold text-amber-300">{activeComponent.manufacturer || 'N/A'}</span>
+                    </div>
+
+                    <div className="p-2.5 rounded-xl bg-black/40 border border-white/5">
+                      <span className="text-slate-500 text-[10px] uppercase font-mono block">Date of Purchase</span>
+                      <span className="font-mono text-slate-300">{activeComponent.purchaseDate || 'N/A'}</span>
+                    </div>
+                  </div>
+
+                  {/* Telemetry Status Summary Cards */}
+                  <div className="grid grid-cols-3 gap-3 mt-3 text-xs">
+                    <div className="p-3 rounded-xl bg-purple-900/20 border border-purple-500/20 text-center">
+                      <span className="text-slate-400 text-[10px] block">Total Inspections</span>
+                      <span className="text-lg font-bold text-purple-300">{activeComponent.inspectionCount ?? 0}</span>
+                    </div>
+                    <div className="p-3 rounded-xl bg-blue-900/20 border border-blue-500/20 text-center">
+                      <span className="text-slate-400 text-[10px] block">Current Health</span>
+                      <span className="text-lg font-bold text-emerald-400">{activeComponent.health ?? 100}/100</span>
+                    </div>
+                    <div className="p-3 rounded-xl bg-cyan-900/20 border border-cyan-500/20 text-center">
+                      <span className="text-slate-400 text-[10px] block">AI Priority</span>
+                      <span className="text-lg font-bold text-cyan-400">{activeComponent.priority || 'Low'}</span>
+                    </div>
+                  </div>
+
+                  <div className="mt-4 pt-3 border-t border-white/5 flex items-center justify-between text-[11px] text-slate-400">
+                    <span>Last Inspected: <strong className="text-white">{activeComponent.lastInspectionDate || new Date().toISOString().split('T')[0]}</strong></span>
+                    <span>Track Spec: <strong className="text-slate-300">{activeComponent.trackType || 'Broad Gauge (1676 mm)'}</strong></span>
+                  </div>
                 </div>
-
-                <div className="space-y-2 text-xs">
-                  <div className="flex justify-between p-2 rounded bg-black/40">
-                    <span className="text-slate-400">Risk Level:</span>
-                    <span className="text-emerald-400 font-semibold">Low</span>
-                  </div>
-                  <div className="flex justify-between p-2 rounded bg-black/40">
-                    <span className="text-slate-400">Failure Probability:</span>
-                    <span className="text-cyan-400 font-mono">1.8%</span>
-                  </div>
-                  <div className="flex justify-between p-2 rounded bg-black/40">
-                    <span className="text-slate-400">Expected Life:</span>
-                    <span className="text-slate-200">14.2 Years</span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="mt-4 pt-3 border-t border-white/10 text-[10px] text-slate-500 text-center font-mono">
-                Model: Python XGBoost v2.4 | Sync Latency: 12ms
-              </div>
+              )}
             </div>
 
           </div>
 
-          {/* 4. INSPECTION HISTORY TABLE SECTION */}
-          <div className="p-6 rounded-2xl bg-slate-900/50 border border-white/10 backdrop-blur-xl">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
-              <div>
-                <h3 className="text-sm font-bold text-white">Clip Inspection Audit Trail</h3>
-                <p className="text-[11px] text-slate-400">Historical records for component {activeComponent.compId}</p>
-              </div>
-              <button onClick={() => alert('Exporting PDF Report...')} className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-purple-600 to-blue-600 text-white text-xs font-medium flex items-center space-x-2 cursor-pointer">
-                <FaDownload className="text-[10px]" />
-                <span>Export History PDF</span>
-              </button>
-            </div>
 
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs">
-                <thead>
-                  <tr className="border-b border-white/10 text-slate-400 font-mono uppercase text-[10px] tracking-wider">
-                    <th className="pb-3 px-4">Date & Time</th>
-                    <th className="pb-3 px-4">Inspector</th>
-                    <th className="pb-3 px-4">Condition</th>
-                    <th className="pb-3 px-4">Severity</th>
-                    <th className="pb-3 px-4">Health Score</th>
-                    <th className="pb-3 px-4">Maintenance</th>
-                    <th className="pb-3 px-4">Remarks</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-white/5 text-slate-300">
-                  {historyList.map((row) => (
-                    <tr key={row.id} className="hover:bg-white/5 transition-colors">
-                      <td className="py-3.5 px-4 font-mono text-slate-400">{row.date}</td>
-                      <td className="py-3.5 px-4 font-medium text-white">{row.inspector}</td>
-                      <td className="py-3.5 px-4">{row.condition}</td>
-                      <td className="py-3.5 px-4">
-                        <span className={`px-2 py-0.5 rounded text-[10px] font-semibold ${
-                          row.severity === 'Low' ? 'bg-emerald-500/15 text-emerald-400' :
-                          row.severity === 'Medium' ? 'bg-amber-500/15 text-amber-400' : 'bg-red-500/15 text-red-400'
-                        }`}>
-                          {row.severity}
-                        </span>
-                      </td>
-                      <td className="py-3.5 px-4 font-bold text-cyan-400">{row.health}/100</td>
-                      <td className="py-3.5 px-4">{row.maintenance}</td>
-                      <td className="py-3.5 px-4 text-slate-400 max-w-xs truncate">{row.remarks}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-          {/* 5. TIMELINE & RECHARTS ROW */}
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-            
-            {/* Timeline Panel (5 cols) */}
-            <div className="lg:col-span-5 p-6 rounded-2xl bg-slate-900/50 border border-white/10 backdrop-blur-xl">
-              <h3 className="text-sm font-bold text-white mb-1">Lifecycle Events Timeline</h3>
-              <p className="text-[11px] text-slate-400 mb-6">Component deployment milestones</p>
-
-              <div className="relative pl-4 border-l border-white/10 space-y-6">
-                {mockComponentTimeline.map((item, idx) => (
-                  <div key={idx} className="relative">
-                    <span className="absolute -left-[21px] top-1 w-2.5 h-2.5 rounded-full bg-cyan-400 border-2 border-slate-900" />
-                    <div className="text-xs font-semibold text-white">{item.title}</div>
-                    <div className="text-[11px] text-slate-400 mt-0.5">{item.desc}</div>
-                    <div className="text-[10px] text-slate-500 font-mono mt-1">{item.time}</div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Recharts Health Trend (7 cols) */}
-            <div className="lg:col-span-7 p-6 rounded-2xl bg-slate-900/50 border border-white/10 backdrop-blur-xl">
-              <h3 className="text-sm font-bold text-white mb-1">Clip Health Progression</h3>
-              <p className="text-[11px] text-slate-400 mb-6">Telemetry scores over time</p>
-              
-              <div className="h-64 w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={mockHealthTrend}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
-                    <XAxis dataKey="month" stroke="#64748b" fontSize={11} />
-                    <YAxis stroke="#64748b" fontSize={11} domain={[0, 100]} />
-                    <Tooltip contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', borderRadius: '12px', fontSize: '12px' }} />
-                    <Area type="monotone" dataKey="health" stroke="#00D2FF" fill="#00D2FF" fillOpacity={0.15} strokeWidth={2} />
-                  </AreaChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
-
-          </div>
-
-          {/* 6. QUICK ACTION BUTTONS */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            {[
-              { label: 'Start New QR Inspection', icon: FaQrcode, color: 'from-purple-600 to-blue-600', path: '/inspections' },
-              { label: 'View Asset Inventory', icon: FaLayerGroup, color: 'from-cyan-600 to-teal-600', path: '/components' },
-              { label: 'Run Full AI Analysis', icon: FaBrain, color: 'from-blue-600 to-indigo-600', path: '/ai-analysis' },
-              { label: 'Export Telemetry Report', icon: FaFolder, color: 'from-slate-700 to-slate-800', path: '/reports' },
-            ].map((btn, idx) => {
-              const Icon = btn.icon;
-              return (
-                <button 
-                  key={idx}
-                  onClick={() => navigate(btn.path)}
-                  className={`p-4 rounded-2xl bg-gradient-to-r ${btn.color} text-white font-medium text-xs shadow-lg flex items-center justify-center space-x-3 hover:opacity-90 transition-all cursor-pointer`}
-                >
-                  <Icon className="text-sm" />
-                  <span>{btn.label}</span>
-                </button>
-              );
-            })}
-          </div>
 
         </main>
 

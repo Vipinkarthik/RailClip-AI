@@ -1,12 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
+import { getLoggedInDistrictOfficer } from '../services/authHelper';
 import { 
   FaQrcode, FaBrain, FaCloud, FaShieldAlt, FaChartLine, 
   FaSearch, FaBell, FaUserCircle, FaMoon, FaSun, FaBars, 
   FaTimes, FaMicrochip, FaExclamationTriangle, FaCheckCircle, 
   FaTools, FaDownload, FaPlus, FaFilter, FaMapMarkerAlt, 
-  FaDatabase, FaSync, FaServer, FaSignOutAlt, FaFolder
+  FaDatabase, FaSync, FaServer, FaSignOutAlt, FaFolder, FaUserPlus
 } from 'react-icons/fa';
 import { 
   ResponsiveContainer, LineChart, Line, AreaChart, Area, 
@@ -149,6 +150,7 @@ const mockTimeline = [
    ========================================================================== */
 export default function Dashboard() {
   const navigate = useNavigate();
+  const districtOfficer = getLoggedInDistrictOfficer();
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [activeTab, setActiveTab] = useState('Dashboard');
   const [searchQuery, setSearchQuery] = useState('');
@@ -233,6 +235,7 @@ export default function Dashboard() {
               { label: 'Inspections', icon: FaShieldAlt, path: '/inspections' },
               { label: 'AI Analysis', icon: FaBrain, path: '/ai-analysis' },
               { label: 'Reports', icon: FaFolder, path: '/reports' },
+              { label: 'Worker Accounts', icon: FaUserPlus, path: '/worker-account' },
             ].map((item) => {
               const Icon = item.icon;
               const isActive = activeTab === item.label;
@@ -324,8 +327,8 @@ export default function Dashboard() {
             <div className="flex items-center space-x-3 pl-3 border-l border-white/10">
               <FaUserCircle className="text-2xl text-purple-400" />
               <div className="hidden sm:flex flex-col text-left">
-                <span className="text-xs font-medium text-white leading-none">Command Admin</span>
-                <span className="text-[10px] text-slate-400">Indian Railways Dev</span>
+                <span className="text-xs font-medium text-white leading-none">{districtOfficer.title}</span>
+                <span className="text-[10px] text-slate-400">{districtOfficer.subtitle}</span>
               </div>
             </div>
 

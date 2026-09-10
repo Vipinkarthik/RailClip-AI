@@ -1,6 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
+import { createComponentBatch, listComponentBatches } from '../api/components';
+import { getLoggedInDistrictOfficer } from '../services/authHelper';
+import { BrowserQRCodeReader } from '@zxing/browser';
 import { 
   FaQrcode, FaBrain, FaCloud, FaShieldAlt, FaChartLine, 
   FaSearch, FaBell, FaUserCircle, FaBars, FaTimes, 
@@ -8,7 +11,7 @@ import {
   FaTrash, FaPrint, FaMapMarkerAlt, FaCogs, FaSignOutAlt, 
   FaFolder, FaMicrochip, FaExclamationTriangle, FaCheckCircle, 
   FaTools, FaCalendarAlt, FaBuilding, FaIndustry, FaCheck,
-  FaArrowRight, FaLayerGroup, FaHistory, FaInfoCircle
+  FaArrowRight, FaLayerGroup, FaHistory, FaInfoCircle, FaUserPlus, FaCamera, FaUpload
 } from 'react-icons/fa';
 import { 
   ResponsiveContainer, PieChart, Pie, Cell, 
@@ -102,22 +105,386 @@ function LiquidEther({
 }
 
 /* ==========================================================================
-   REST-API READY DUMMY DATASTRUCTURES
+   BACKEND-DRIVEN DATA HELPERS
    ========================================================================== */
-const initialComponents = [
-  { id: '1', qrId: 'QR-8842-109', compId: 'CLP-001', section: 'Sec 14, Track B', zone: 'Southern', division: 'Chennai', station: 'Katpadi Jn', lat: '12.9716', lng: '79.1312', installDate: '2026-01-15', manufacturer: 'Jindal Steel', material: 'Spring Steel 60Si7', trackType: 'Broad Gauge', status: 'Active', health: 96, priority: 'Low', expectedLife: 15, lastInspection: '2026-07-20' },
-  { id: '2', qrId: 'QR-9104-204', compId: 'CLP-002', section: 'Sec 08, Track A', zone: 'Southern', division: 'Tiruchirappalli', station: 'Thanjavur Jn', lat: '10.7870', lng: '79.1378', installDate: '2025-11-20', manufacturer: 'Tata Steel', material: 'Alloy Steel', trackType: 'Broad Gauge', status: 'Maintenance', health: 64, priority: 'Medium', expectedLife: 12, lastInspection: '2026-07-18' },
-  { id: '3', qrId: 'QR-3319-902', compId: 'CLP-003', section: 'Sec 03, Track C', zone: 'Central', division: 'Mumbai', station: 'Kalyan Jn', lat: '19.2403', lng: '73.1305', installDate: '2024-03-10', manufacturer: 'Sail Rail Corp', material: 'High Tensile Steel', trackType: 'High Speed', status: 'Replaced', health: 28, priority: 'High', expectedLife: 10, lastInspection: '2026-07-15' },
-  { id: '4', qrId: 'QR-4412-511', compId: 'CLP-004', section: 'Sec 12, Track A', zone: 'Northern', division: 'Delhi', station: 'Ambala Cantt', lat: '30.3340', lng: '76.8376', installDate: '2026-02-01', manufacturer: 'Jindal Steel', material: 'Spring Steel 60Si7', trackType: 'Broad Gauge', status: 'Active', health: 91, priority: 'Low', expectedLife: 15, lastInspection: '2026-07-19' },
-  { id: '5', qrId: 'QR-7721-008', compId: 'CLP-005', section: 'Sec 21, Track B', zone: 'Western', division: 'Vadodara', station: 'Anand Jn', lat: '22.5645', lng: '72.9289', installDate: '2025-08-12', manufacturer: 'Tata Steel', material: 'Alloy Steel', trackType: 'Freight Corridor', status: 'Inactive', health: 42, priority: 'High', expectedLife: 12, lastInspection: '2026-07-10' },
-];
+function buildStatusChartData(components) {
+  const statusMeta = [
+    { key: 'Active', name: 'Active / Healthy', color: '#10B981' },
+    { key: 'Maintenance', name: 'Under Maintenance', color: '#F59E0B' },
+    { key: 'Replaced', name: 'Replaced / Failed', color: '#EF4444' },
+    { key: 'Inactive', name: 'Inactive / Pending', color: '#6B7280' },
+  ];
 
-const mockStatusChart = [
-  { name: 'Active / Healthy', value: 4210, color: '#10B981' },
-  { name: 'Under Maintenance', value: 348, color: '#F59E0B' },
-  { name: 'Replaced / Failed', value: 127, color: '#EF4444' },
-  { name: 'Inactive / Pending', value: 89, color: '#6B7280' }
-];
+  return statusMeta.map((entry) => ({
+    name: entry.name,
+    value: components.filter((component) => component.status === entry.key).length,
+    color: entry.color,
+  }));
+}
+
+function parseChildQrRange(childQrRange) {
+  const normalizedRange = String(childQrRange || '').replace(/\s+/g, '').trim().toUpperCase();
+  const match = normalizedRange.match(/^([A-Z]+)(\d+)-([A-Z]+)(\d+)$/);
+
+  if (!match) {
+    return null;
+  }
+
+  const [, startPrefix, startNumber, endPrefix, endNumber] = match;
+
+  if (startPrefix !== endPrefix) {
+    return null;
+  }
+
+  const startValue = Number(startNumber);
+  const endValue = Number(endNumber);
+
+  if (!Number.isInteger(startValue) || !Number.isInteger(endValue) || endValue < startValue) {
+    return null;
+  }
+
+  const paddedWidth = Math.max(startNumber.length, endNumber.length);
+
+  return {
+    childQrPrefix: startPrefix,
+    childQrStart: `${startPrefix}${startNumber.padStart(paddedWidth, '0')}`,
+    childQrEnd: `${endPrefix}${endNumber.padStart(paddedWidth, '0')}`,
+    childQrRange: `${startPrefix}${startNumber.padStart(paddedWidth, '0')}-${endPrefix}${endNumber.padStart(paddedWidth, '0')}`,
+    clipsPurchased: endValue - startValue + 1,
+  };
+}
+
+function parseMasterQrPayload(rawValue) {
+  const rawText = String(rawValue || '').trim();
+
+  if (!rawText) {
+    return null;
+  }
+
+  const readPayloadValue = (payload, keys) => {
+    for (const key of keys) {
+      const value = payload?.[key];
+      if (value !== undefined && value !== null && String(value).trim() !== '') {
+        return value;
+      }
+    }
+
+    return '';
+  };
+
+  const buildPayload = (payload) => {
+    const masterQrId = String(
+      readPayloadValue(payload, ['masterQrId', 'masterQr', 'qrId', 'qr', 'batchNo', 'batchNumber', 'batch_no', 'batch_id', 'id', 'code']) || rawText
+    ).trim();
+    const batchDetails = String(
+      readPayloadValue(payload, ['batchDetails', 'batch', 'details', 'type', 'batchNo', 'batchNumber', 'batch_no', 'qrType', 'label', 'title'])
+    ).trim();
+    const childQrRange = String(
+      readPayloadValue(payload, ['childQrRange', 'childRange', 'range', 'qrRange', 'child_qr_range'])
+    ).trim();
+    const startClip = String(
+      readPayloadValue(payload, ['startClip', 'childQrStart', 'start_clip', 'child_qr_start'])
+    ).trim();
+    const endClip = String(
+      readPayloadValue(payload, ['endClip', 'childQrEnd', 'end_clip', 'child_qr_end'])
+    ).trim();
+    const totalClips = Number(
+      readPayloadValue(payload, ['totalClips', 'clipsPurchased', 'clipCount', 'total_clips'])
+    );
+
+    const resolvedRange = childQrRange || (startClip && endClip ? `${startClip}-${endClip}` : '');
+    const resolvedBatchDetails = batchDetails || masterQrId;
+
+    if (!masterQrId || !resolvedRange) {
+      return null;
+    }
+
+    return {
+      masterQrId,
+      batchDetails: resolvedBatchDetails,
+      childQrRange: resolvedRange,
+      childQrStart: startClip || resolvedRange.split('-')[0] || '',
+      childQrEnd: endClip || resolvedRange.split('-')[1] || '',
+      clipsPurchased: Number.isFinite(totalClips) && totalClips > 0 ? totalClips : undefined,
+    };
+  };
+
+  const buildPayloadFromLooseText = (text) => {
+    const normalizedText = String(text || '').replace(/\uFEFF/g, '').trim();
+    const extracted = {
+      type: '',
+      batchNo: '',
+      batchNumber: '',
+      batch_no: '',
+      startClip: '',
+      start_clip: '',
+      endClip: '',
+      end_clip: '',
+      totalClips: '',
+      total_clips: '',
+      masterQrId: '',
+      batchDetails: '',
+      batch_details: '',
+      childQrRange: '',
+      child_qr_range: '',
+    };
+
+    const pattern = /(?:^|[\s,;{])(type|batchNo|batchNumber|batch_no|startClip|start_clip|endClip|end_clip|totalClips|total_clips|masterQrId|batchDetails|batch_details|childQrRange|child_qr_range|childRange|range|details|batch)\s*[:=]\s*"?([^",}\n]+)"?/gi;
+    let match;
+
+    while ((match = pattern.exec(normalizedText)) !== null) {
+      const key = match[1].toLowerCase();
+      const value = match[2].trim();
+
+      if (key === 'batchnumber' || key === 'batchno') {
+        extracted.batchNo = value;
+      } else if (key === 'batch_no') {
+        extracted.batch_no = value;
+      } else if (key === 'childrange') {
+        extracted.childQrRange = value;
+      } else if (key === 'child_qr_range') {
+        extracted.child_qr_range = value;
+      } else if (key === 'batch_details') {
+        extracted.batch_details = value;
+      } else if (key === 'start_clip') {
+        extracted.start_clip = value;
+      } else if (key === 'end_clip') {
+        extracted.end_clip = value;
+      } else if (key === 'total_clips') {
+        extracted.total_clips = value;
+      } else {
+        extracted[key] = value;
+      }
+    }
+
+    const masterQrId = extracted.masterQrId || extracted.batchNo || extracted.batchNumber || extracted.batch_no;
+    const batchDetails = extracted.batchDetails || extracted.batch_details || extracted.type || extracted.details || extracted.batch || '';
+    const startClip = extracted.startClip || extracted.start_clip;
+    const endClip = extracted.endClip || extracted.end_clip;
+    const resolvedRange = extracted.childQrRange || extracted.child_qr_range || (startClip && endClip ? `${startClip}-${endClip}` : '');
+
+    if (!masterQrId || !batchDetails || !resolvedRange) {
+      return null;
+    }
+
+    return {
+      masterQrId,
+      batchDetails,
+      childQrRange: resolvedRange,
+    };
+  };
+
+  const buildPayloadFromHeuristics = (text) => {
+    const normalizedText = String(text || '')
+      .replace(/\uFEFF/g, '')
+      .replace(/[{}()[\]<>]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+
+    const typeMatch = normalizedText.match(/\b(MASTER|BATCH|TYPE|CLIP)\b/i);
+    const clipCodes = normalizedText.match(/\b[A-Z]{1,5}\d{1,6}\b/gi) || [];
+    const batchMatch = clipCodes[0] || '';
+    const rangeMatch = normalizedText.match(/\b([A-Z]{1,5}\d{1,6})\s*(?:-|to)\s*([A-Z]{1,5}\d{1,6})\b/i);
+    const startClipMatch = normalizedText.match(/(?:startclip|start|from)\s*[:=]?\s*(\b[A-Z]{1,5}\d{1,6}\b)/i);
+    const endClipMatch = normalizedText.match(/(?:endclip|end|to)\s*[:=]?\s*(\b[A-Z]{1,5}\d{1,6}\b)/i);
+    const totalClipsMatch = normalizedText.match(/(?:totalclips|clips|count)\s*[:=]?\s*(\d+)/i);
+
+    const inferredStartClip = rangeMatch?.[1] || startClipMatch?.[1] || clipCodes[0] || '';
+    const inferredEndClip = rangeMatch?.[2] || endClipMatch?.[1] || clipCodes[clipCodes.length - 1] || '';
+    const masterQrId = batchMatch || '';
+    const batchDetails = typeMatch?.[1]?.toUpperCase() || 'MASTER';
+    const startClip = inferredStartClip;
+    const endClip = inferredEndClip;
+    const resolvedRange = startClip && endClip ? `${startClip}-${endClip}` : '';
+
+    if (!masterQrId || !resolvedRange) {
+      return null;
+    }
+
+    return {
+      masterQrId,
+      batchDetails,
+      childQrRange: resolvedRange,
+      childQrStart: startClip,
+      childQrEnd: endClip,
+      clipsPurchased: totalClipsMatch ? Number(totalClipsMatch[1]) : undefined,
+    };
+  };
+
+  try {
+    const parsed = JSON.parse(rawText);
+    if (parsed && typeof parsed === 'object') {
+      const payload = buildPayload(parsed);
+      if (payload) {
+        return payload;
+      }
+    }
+  } catch {
+    const normalizedJson = rawText
+      .replace(/^```(?:json)?\s*/i, '')
+      .replace(/\s*```$/i, '')
+      .replace(/([{,]\s*)([A-Za-z0-9_]+)\s*:/g, '$1"$2":')
+      .replace(/:\s*'([^']*)'/g, ':"$1"');
+
+    try {
+      const parsedLooseJson = JSON.parse(normalizedJson);
+      if (parsedLooseJson && typeof parsedLooseJson === 'object') {
+        const payload = buildPayload(parsedLooseJson);
+        if (payload) {
+          return payload;
+        }
+      }
+    } catch {
+      // Fall through to delimited string parsing.
+    }
+  }
+
+  const urlMatch = rawText.match(/https?:\/\/[^\s]+/i);
+
+  if (urlMatch) {
+    try {
+      const url = new URL(urlMatch[0]);
+      const queryPayload = {
+        masterQrId: url.searchParams.get('masterQrId') || url.searchParams.get('batchNo') || url.searchParams.get('batchNumber') || '',
+        batchDetails: url.searchParams.get('batchDetails') || url.searchParams.get('type') || url.searchParams.get('batch') || '',
+        childQrRange: url.searchParams.get('childQrRange') || url.searchParams.get('range') || '',
+        startClip: url.searchParams.get('startClip') || '',
+        endClip: url.searchParams.get('endClip') || '',
+        totalClips: url.searchParams.get('totalClips') || '',
+      };
+
+      const payload = buildPayload(queryPayload);
+
+      if (payload) {
+        return payload;
+      }
+    } catch {
+      // Ignore URL parsing failures.
+    }
+  }
+
+  const loosePayload = buildPayloadFromLooseText(rawText);
+
+  if (loosePayload) {
+    return loosePayload;
+  }
+
+  const heuristicPayload = buildPayloadFromHeuristics(rawText);
+
+  if (heuristicPayload) {
+    return heuristicPayload;
+  }
+
+  const segments = rawText.split(/[|;\n]+/).map((segment) => segment.trim()).filter(Boolean);
+
+  if (segments.length >= 3) {
+    const [masterQrId, batchDetails, childQrRange] = segments;
+    return {
+      masterQrId,
+      batchDetails,
+      childQrRange,
+    };
+  }
+
+  const keyValuePairs = {};
+
+  rawText.split(/[;\n]+/).forEach((segment) => {
+    const [key, ...rest] = segment.split(/[:=]/);
+    if (!key || !rest.length) {
+      return;
+    }
+
+    keyValuePairs[key.trim().toLowerCase()] = rest.join('=').trim();
+  });
+
+    const payload = buildPayload({
+      masterQrId: keyValuePairs.masterqrid || keyValuePairs.masterqr || keyValuePairs.qrid || keyValuePairs.qr || keyValuePairs.id || keyValuePairs.code,
+      batchDetails: keyValuePairs.batchdetails || keyValuePairs.batch_details || keyValuePairs.batch || keyValuePairs.details || keyValuePairs.type || keyValuePairs.label || keyValuePairs.title,
+      childQrRange: keyValuePairs.childqrrange || keyValuePairs.child_qr_range || keyValuePairs.childrange || keyValuePairs.range,
+      batchNo: keyValuePairs.batchno || keyValuePairs.batchnumber || keyValuePairs.batch_no,
+      startClip: keyValuePairs.startclip || keyValuePairs.start_clip,
+      endClip: keyValuePairs.endclip || keyValuePairs.end_clip,
+      totalClips: keyValuePairs.totalclips || keyValuePairs.total_clips,
+    });
+
+  return payload;
+}
+
+async function decodeQrTextFromImageFile(file) {
+  const objectUrl = URL.createObjectURL(file);
+
+  try {
+    const image = await new Promise((resolve, reject) => {
+      const imageElement = new Image();
+
+      imageElement.onload = () => resolve(imageElement);
+      imageElement.onerror = () => reject(new Error('Unable to load the uploaded image.'));
+      imageElement.src = objectUrl;
+    });
+
+    const reader = new BrowserQRCodeReader();
+    const result = await reader.decodeFromImageElement(image);
+
+    return result.getText();
+  } finally {
+    URL.revokeObjectURL(objectUrl);
+  }
+}
+
+function normalizeBatchRecord(batch) {
+  if (!batch) {
+    return batch;
+  }
+
+  return {
+    ...batch,
+    id: batch.id || String(Date.now()),
+    qrId: batch.masterQrId || batch.qrId || '',
+    masterQrId: batch.masterQrId || batch.qrId || '',
+    compId: batch.batchDetails || batch.compId || batch.masterQrId || '',
+    batchDetails: batch.batchDetails || batch.compId || '',
+    childQrRange: batch.childQrRange || '',
+    childQrStart: batch.childQrStart || '',
+    childQrEnd: batch.childQrEnd || '',
+    clipsPurchased: batch.clipsPurchased ?? batch.clipCount ?? batch.numberOfClips ?? '',
+    purchaseDate: batch.purchaseDate || batch.installDate || '',
+    manufacturer: batch.manufacturer || batch.batchManufacturer || '',
+    section: batch.section || batch.batchDetails || batch.childQrRange || '',
+    zone: batch.zone || 'Batch',
+    division: batch.division || 'Procurement',
+    station: batch.station || 'Warehouse',
+    installDate: batch.installDate || batch.purchaseDate || '',
+    status: batch.status || 'Active',
+    health: Number(batch.health ?? 100),
+    priority: batch.priority || 'Low',
+    lastInspection: batch.lastInspection || 'Pending Inspection',
+  };
+}
+
+function buildPayloadFromBatchRecord(batch) {
+  const normalizedBatch = normalizeBatchRecord(batch);
+
+  if (!normalizedBatch) {
+    return null;
+  }
+
+  const masterQrId = String(normalizedBatch.masterQrId || normalizedBatch.qrId || normalizedBatch.batchNo || '').trim();
+  const batchDetails = String(normalizedBatch.batchDetails || normalizedBatch.qrType || normalizedBatch.compId || '').trim();
+  const childQrRange = String(normalizedBatch.childQrRange || '').trim();
+
+  if (!masterQrId || !batchDetails || !childQrRange) {
+    return null;
+  }
+
+  return {
+    masterQrId,
+    batchDetails,
+    childQrRange,
+    childQrStart: normalizedBatch.childQrStart || '',
+    childQrEnd: normalizedBatch.childQrEnd || '',
+    clipsPurchased: Number(normalizedBatch.clipsPurchased || normalizedBatch.totalClips) || undefined,
+  };
+}
 
 /* ==========================================================================
    MAIN COMPONENT: Components.jsx
@@ -128,8 +495,15 @@ export default function Components() {
   // Navigation & Workspace State
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [activeTab, setActiveTab] = useState('Components');
-  const [componentsList, setComponentsList] = useState(initialComponents);
+  const [componentsList, setComponentsList] = useState([]);
   const [currentTime, setCurrentTime] = useState(new Date());
+  const [loadingBatches, setLoadingBatches] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isScannerOpen, setIsScannerOpen] = useState(false);
+  const [scannerStatus, setScannerStatus] = useState('Ready to scan master QR.');
+  const [uploadedQrName, setUploadedQrName] = useState('');
+  const [qrPreviewSrc, setQrPreviewSrc] = useState('');
+  const qrPreviewUrlRef = useRef('');
 
   // Filter & Search State
   const [searchQuery, setSearchQuery] = useState('');
@@ -138,11 +512,17 @@ export default function Components() {
 
   // Form State
   const [formData, setFormData] = useState({
-    batchNumber: '',
-    batchManufacturer: '',
-    clipsPurchased: '',
+    masterQrId: '',
+    batchDetails: '',
+    childQrRange: '',
+    manufacturer: '',
     purchaseDate: new Date().toISOString().split('T')[0],
-    qrId: ''
+  });
+
+  const [qrFieldHints, setQrFieldHints] = useState({
+    masterQrId: 'Master QR / Batch No',
+    batchDetails: 'Type / Batch Details',
+    childQrRange: 'Child QR Range',
   });
 
   // Modal, Drawer & Notification States
@@ -150,16 +530,45 @@ export default function Components() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
-  const [generatedQr, setGeneratedQr] = useState(null);
-  const [notifications, setNotifications] = useState([
-    { id: 1, msg: 'Component CLP-001 registered successfully', time: '10m ago' },
-    { id: 2, msg: 'QR-8842-109 laser code generated', time: '1h ago' }
-  ]);
+  const [notifications, setNotifications] = useState([]);
 
   // Real-time Clock
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
     return () => clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadBatches = async () => {
+      try {
+        const response = await listComponentBatches();
+        const batches = Array.isArray(response?.data) ? response.data : [];
+
+        if (isMounted) {
+          setComponentsList(batches.map(normalizeBatchRecord).filter(Boolean));
+        }
+      } catch (error) {
+        if (isMounted) {
+          setComponentsList([]);
+          setNotifications((prev) => [
+            { id: Date.now(), msg: 'Unable to load component batches from the backend', time: 'Just now' },
+            ...prev,
+          ]);
+        }
+      } finally {
+        if (isMounted) {
+          setLoadingBatches(false);
+        }
+      }
+    };
+
+    loadBatches();
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   // Navigation Routing Handler
@@ -176,71 +585,211 @@ export default function Components() {
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  // Generate QR Preview
-  const handleGenerateQr = () => {
-    const generatedId = `QR-${Math.floor(1000 + Math.random() * 9000)}-${Math.floor(100 + Math.random() * 900)}`;
-    setFormData(prev => ({ ...prev, qrId: generatedId }));
-    setGeneratedQr({
-      qrId: generatedId,
-      compId: formData.batchNumber || 'BATCH-NEW',
-      timestamp: new Date().toLocaleString()
+  const resolveDecodedQrPayload = async (decodedText) => {
+    const parsedPayload = parseMasterQrPayload(decodedText);
+
+    if (parsedPayload) {
+      return parsedPayload;
+    }
+
+    const normalizedCandidate = String(decodedText || '').trim().toUpperCase();
+
+    if (!normalizedCandidate) {
+      return null;
+    }
+
+    const recordMatchesCandidate = (record) => {
+      const normalizedRecord = normalizeBatchRecord(record);
+
+      return [
+        normalizedRecord.masterQrId,
+        normalizedRecord.qrId,
+        normalizedRecord.batchNo,
+        normalizedRecord.compId,
+      ].some((value) => String(value || '').trim().toUpperCase() === normalizedCandidate);
+    };
+
+    const localMatch = componentsList.find(recordMatchesCandidate);
+
+    if (localMatch) {
+      return buildPayloadFromBatchRecord(localMatch);
+    }
+
+    try {
+      const response = await listComponentBatches();
+      const remoteBatches = Array.isArray(response?.data) ? response.data : [];
+      const remoteMatch = remoteBatches.map(normalizeBatchRecord).find(recordMatchesCandidate);
+
+      if (remoteMatch) {
+        return buildPayloadFromBatchRecord(remoteMatch);
+      }
+    } catch {
+      // Fall through to the existing error message.
+    }
+
+    return null;
+  };
+
+  const handleOpenScanner = () => {
+    setScannerStatus('Upload a QR image to extract the batch data.');
+    setUploadedQrName('');
+    setQrPreviewSrc('');
+    setIsScannerOpen(true);
+  };
+
+  const closeScannerModal = () => {
+    if (qrPreviewUrlRef.current) {
+      URL.revokeObjectURL(qrPreviewUrlRef.current);
+      qrPreviewUrlRef.current = '';
+    }
+
+    setIsScannerOpen(false);
+    setUploadedQrName('');
+    setQrPreviewSrc('');
+    setScannerStatus('Ready to scan master QR.');
+  };
+
+  const applyDecodedQrPayload = (payload, successMessagePrefix = 'Scanned') => {
+    if (!payload) {
+      setScannerStatus('QR scanned, but the payload did not include batch fields.');
+      return;
+    }
+
+    const derivedRange = parseChildQrRange(payload.childQrRange);
+
+    setFormData((prev) => ({
+      ...prev,
+      masterQrId: payload.masterQrId,
+      batchDetails: payload.batchDetails,
+      childQrRange: payload.childQrRange,
+    }));
+
+    setQrFieldHints({
+      masterQrId: payload.masterQrId ? 'Batch No / Master QR' : 'Master QR / Batch No',
+      batchDetails: payload.batchDetails ? 'Type / Batch Details' : 'Type / Batch Details',
+      childQrRange: payload.childQrRange ? 'StartClip-EndClip derived as child QR range' : 'Child QR Range',
+    });
+
+    setScannerStatus(
+      derivedRange
+        ? `${successMessagePrefix} ${payload.masterQrId} and filled ${derivedRange.clipsPurchased} clips.`
+        : `${successMessagePrefix} ${payload.masterQrId}.`
+    );
+
+    setNotifications((prev) => [
+      { id: Date.now(), msg: `Master QR ${payload.masterQrId} scanned and batch fields filled`, time: 'Just now' },
+      ...prev,
+    ]);
+
+    setIsScannerOpen(false);
+  };
+
+  const handleQrUpload = async (event) => {
+    const file = event.target.files?.[0];
+
+    if (!file) {
+      return;
+    }
+
+    setUploadedQrName(file.name);
+    if (qrPreviewUrlRef.current) {
+      URL.revokeObjectURL(qrPreviewUrlRef.current);
+    }
+
+    qrPreviewUrlRef.current = URL.createObjectURL(file);
+    setQrPreviewSrc(qrPreviewUrlRef.current);
+    setScannerStatus('Decoding uploaded QR image...');
+
+    try {
+      const decodedText = await decodeQrTextFromImageFile(file);
+      const payload = await resolveDecodedQrPayload(decodedText);
+      applyDecodedQrPayload(payload, 'Uploaded QR');
+    } catch (error) {
+      setScannerStatus(error?.message || 'Unable to decode the uploaded QR image.');
+    } finally {
+      event.target.value = '';
+    }
+  };
+
+  const handleFillFromManualQr = () => {
+    const payload = parseMasterQrPayload(formData.masterQrId);
+
+    if (!payload) {
+      alert('Enter or scan a master QR that contains masterQrId, batchDetails, and childQrRange.');
+      return;
+    }
+
+    setFormData((prev) => ({
+      ...prev,
+      masterQrId: payload.masterQrId,
+      batchDetails: payload.batchDetails,
+      childQrRange: payload.childQrRange,
+    }));
+
+    setQrFieldHints({
+      masterQrId: 'Batch No / Master QR',
+      batchDetails: 'Type / Batch Details',
+      childQrRange: 'StartClip-EndClip derived as child QR range',
     });
   };
 
   // Save Component
-  const handleSaveComponent = (e) => {
+  const handleSaveComponent = async (e) => {
     e.preventDefault();
-    if (!formData.batchNumber || !formData.batchManufacturer || !formData.clipsPurchased || !formData.purchaseDate) {
-      alert('Please fill in all batch details first.');
+
+    const rangeDetails = parseChildQrRange(formData.childQrRange);
+    const resolvedBatchDetails = formData.batchDetails || formData.masterQrId || 'MASTER';
+
+    if (!formData.masterQrId || !formData.childQrRange || !formData.manufacturer || !formData.purchaseDate) {
+      alert('Please fill in the master QR, child QR range, manufacturer, and purchase date.');
       return;
     }
 
-    const generatedQrId = formData.qrId || `QR-${Math.floor(1000 + Math.random() * 9000)}-${Math.floor(100 + Math.random() * 900)}`;
-    const batchNumberValue = String(formData.batchNumber).trim();
+    if (!rangeDetails) {
+      alert('Child QR range must use the format RL001-RL100.');
+      return;
+    }
 
-    const newComp = {
-      id: String(Date.now()),
-      compId: `BATCH-${batchNumberValue}`,
-      batchNumber: Number(formData.batchNumber),
-      batchManufacturer: formData.batchManufacturer,
-      clipsPurchased: Number(formData.clipsPurchased),
-      purchaseDate: formData.purchaseDate,
-      section: `Batch ${batchNumberValue}`,
-      zone: 'Southern',
-      division: 'Chennai',
-      station: 'Purchased Batch',
-      lat: '',
-      lng: '',
-      installDate: formData.purchaseDate,
-      manufacturer: formData.batchManufacturer,
-      material: '',
-      trackType: '',
-      status: 'Active',
-      ...formData,
-      qrId: generatedQrId,
-      compId: `BATCH-${batchNumberValue}`,
-      health: 100,
-      priority: 'Low',
-      lastInspection: 'Pending Inspection'
-    };
+    try {
+      setIsSubmitting(true);
 
-    setComponentsList([newComp, ...componentsList]);
-    setNotifications([{ id: Date.now(), msg: `New Batch ${batchNumberValue} Registered`, time: 'Just now' }, ...notifications]);
-    setGeneratedQr({
-      qrId: generatedQrId,
-      compId: `BATCH-${batchNumberValue}`,
-      timestamp: new Date().toLocaleString()
-    });
-    
-    // Reset Form
-    setFormData({
-      batchNumber: '',
-      batchManufacturer: '',
-      clipsPurchased: '',
-      purchaseDate: new Date().toISOString().split('T')[0],
-      qrId: ''
-    });
-    setGeneratedQr(null);
+      const response = await createComponentBatch({
+        masterQrId: formData.masterQrId,
+        batchDetails: resolvedBatchDetails,
+        childQrRange: rangeDetails.childQrRange,
+        purchaseDate: formData.purchaseDate,
+        manufacturer: formData.manufacturer,
+        batchNo: formData.masterQrId,
+        type: resolvedBatchDetails,
+        startClip: rangeDetails.childQrStart,
+        endClip: rangeDetails.childQrEnd,
+        totalClips: rangeDetails.clipsPurchased,
+      });
+
+      const savedBatch = normalizeBatchRecord(response?.data || response);
+
+      setComponentsList((currentList) => [savedBatch, ...currentList]);
+      setNotifications((prev) => [
+        {
+          id: Date.now(),
+          msg: `Batch ${savedBatch.masterQrId} registered with ${savedBatch.clipsPurchased} clips`,
+          time: 'Just now',
+        },
+        ...prev,
+      ]);
+
+      setFormData({
+        masterQrId: '',
+        batchDetails: '',
+        childQrRange: '',
+        manufacturer: '',
+        purchaseDate: new Date().toISOString().split('T')[0],
+      });
+    } catch (error) {
+      alert(error?.response?.data?.message || error?.message || 'Unable to register the batch.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   // Edit Component Save
@@ -266,13 +815,23 @@ export default function Components() {
 
   // Filter List Logic
   const filteredComponents = componentsList.filter(comp => {
-    const matchesSearch = comp.compId.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                          comp.qrId.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                          comp.station.toLowerCase().includes(searchQuery.toLowerCase());
+    const searchTerm = searchQuery.toLowerCase();
+    const matchesSearch = [
+      comp.compId,
+      comp.qrId,
+      comp.masterQrId,
+      comp.batchDetails,
+      comp.childQrRange,
+      comp.station,
+    ].some((value) => String(value || '').toLowerCase().includes(searchTerm));
     const matchesStatus = statusFilter === 'All' || comp.status === statusFilter;
     const matchesZone = zoneFilter === 'All' || comp.zone === zoneFilter;
     return matchesSearch && matchesStatus && matchesZone;
   });
+
+  const activeRangePreview = parseChildQrRange(formData.childQrRange);
+  const statusChartData = buildStatusChartData(componentsList);
+  const districtOfficer = getLoggedInDistrictOfficer();
 
   return (
     <div className="relative h-screen bg-[#030712] text-white font-['Poppins',sans-serif] flex overflow-hidden selection:bg-purple-500 selection:text-white">
@@ -334,6 +893,7 @@ export default function Components() {
               { label: 'Inspections', icon: FaShieldAlt, path: '/inspections' },
               { label: 'AI Analysis', icon: FaBrain, path: '/ai-analysis' },
               { label: 'Reports', icon: FaFolder, path: '/reports' },
+              { label: 'Worker Accounts', icon: FaUserPlus, path: '/worker-account' },
             ].map((item) => {
               const Icon = item.icon;
               const isActive = activeTab === item.label;
@@ -403,8 +963,8 @@ export default function Components() {
             <div className="flex items-center space-x-3 pl-3 border-l border-white/10">
               <FaUserCircle className="text-2xl text-purple-400" />
               <div className="hidden sm:flex flex-col text-left">
-                <span className="text-xs font-medium text-white leading-none">Track Administrator</span>
-                <span className="text-[10px] text-slate-400">Railway Engineering</span>
+                <span className="text-xs font-medium text-white leading-none">{districtOfficer.title}</span>
+                <span className="text-[10px] text-slate-400">{districtOfficer.subtitle}</span>
               </div>
             </div>
           </div>
@@ -446,7 +1006,7 @@ export default function Components() {
             
             {/* Component Registration Form (8 Cols) */}
             <div className="lg:col-span-8 p-6 rounded-2xl bg-slate-900/50 border border-white/10 backdrop-blur-xl">
-              <div className="flex items-center justify-between mb-6">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
                 <div>
                   <h2 className="text-sm font-bold text-white flex items-center gap-2">
                     <FaPlus className="text-cyan-400" />
@@ -454,66 +1014,149 @@ export default function Components() {
                   </h2>
                   <p className="text-[11px] text-slate-400">Initialize clip metadata before etching laser QR identity code</p>
                 </div>
+                <div className="flex items-center gap-2">
+                  <button 
+                    type="button" 
+                    onClick={handleOpenScanner} 
+                    className="px-3.5 py-2 rounded-xl bg-cyan-500/15 border border-cyan-400/30 text-cyan-300 text-xs font-semibold hover:bg-cyan-500/25 flex items-center gap-2 cursor-pointer transition-all shrink-0"
+                  >
+                    <FaCamera className="text-xs" />
+                    <span>Scan / Upload Master QR</span>
+                  </button>
+                </div>
               </div>
 
               <form onSubmit={handleSaveComponent} className="space-y-4">
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   <div>
-                    <label className="text-[11px] text-slate-300 mb-1 block">Batch Number *</label>
-                    <input 
-                      type="number" 
-                      name="batchNumber"
-                      value={formData.batchNumber}
-                      onChange={handleInputChange}
-                      placeholder="e.g. 101"
-                      className="w-full px-3 py-2 rounded-xl bg-black/40 border border-white/10 text-white placeholder:text-slate-600 text-xs focus:outline-none focus:border-purple-500"
-                      required
-                    />
-                  </div>
-
-                  <div>
-                    <label className="text-[11px] text-slate-300 mb-1 block">Manufacturar of the Batch *</label>
+                    <label className="text-[11px] text-slate-300 mb-1 block">{qrFieldHints.masterQrId} *</label>
                     <input 
                       type="text" 
-                      name="batchManufacturer"
-                      value={formData.batchManufacturer}
+                      name="masterQrId"
+                      value={formData.masterQrId}
                       onChange={handleInputChange}
-                      placeholder="e.g. Jindal Steel"
+                      placeholder="e.g. RC0001"
                       className="w-full px-3 py-2 rounded-xl bg-black/40 border border-white/10 text-white placeholder:text-slate-600 text-xs focus:outline-none focus:border-purple-500"
                       required
                     />
                   </div>
 
                   <div>
-                    <label className="text-[11px] text-slate-300 mb-1 block">No. of Clips Purchased *</label>
+                    <label className="text-[11px] text-slate-300 mb-1 block">{qrFieldHints.childQrRange} *</label>
                     <input 
-                      type="number" 
-                      name="clipsPurchased"
-                      value={formData.clipsPurchased}
+                      type="text" 
+                      name="childQrRange"
+                      value={formData.childQrRange}
                       onChange={handleInputChange}
-                      placeholder="e.g. 250"
+                      placeholder="e.g. C0001-C0050"
                       className="w-full px-3 py-2 rounded-xl bg-black/40 border border-white/10 text-white text-xs focus:outline-none focus:border-purple-500"
                       required
                     />
                   </div>
+
+                  <div>
+                    <label className="text-[11px] text-slate-300 mb-1 block">Derived Clip Count</label>
+                    <div className="w-full px-3 py-2 rounded-xl bg-black/20 border border-dashed border-cyan-500/30 text-cyan-300 text-xs font-semibold">
+                      {activeRangePreview ? `${activeRangePreview.clipsPurchased} clips` : 'Enter a valid range'}
+                    </div>
+                  </div>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="text-[11px] text-slate-300 mb-1 block">Date of Purchased *</label>
+                    <label className="text-[11px] text-slate-300 mb-1 block">Purchased From *</label>
+                    <input 
+                      type="text" 
+                      name="manufacturer"
+                      value={formData.manufacturer}
+                      onChange={handleInputChange}
+                      placeholder="e.g. Jindal Steel"
+                      className="w-full px-3 py-2 rounded-xl bg-black/40 border border-white/10 text-white text-xs focus:outline-none focus:border-purple-500"
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-[11px] text-slate-300 mb-1 block">Date of Purchase *</label>
                     <input type="date" name="purchaseDate" value={formData.purchaseDate} onChange={handleInputChange} className="w-full px-3 py-2 rounded-xl bg-black/40 border border-white/10 text-white text-xs" required />
                   </div>
                 </div>
 
+                <div className="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-[11px] text-slate-400">
+                  <span>{scannerStatus}</span>
+                  <button type="button" onClick={handleFillFromManualQr} className="text-cyan-300 font-semibold hover:text-cyan-200">
+                    Autofill from pasted QR
+                  </button>
+                </div>
+
+                <div className="flex items-center justify-between rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-[11px] text-slate-400">
+                  <span>{loadingBatches ? 'Syncing existing batches from the backend...' : 'Batch sync ready.'}</span>
+                  <span className="font-mono text-cyan-300">
+                    {activeRangePreview ? `${activeRangePreview.childQrStart} to ${activeRangePreview.childQrEnd}` : 'Awaiting QR range'}
+                  </span>
+                </div>
+
                 <div className="flex justify-end space-x-3 pt-4 border-t border-white/5">
-                  <button type="submit" className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-purple-600 via-blue-600 to-cyan-500 text-white text-xs font-semibold shadow-lg shadow-purple-600/30 hover:opacity-90 cursor-pointer">
-                    Save Asset to Firebase
+                  <button type="submit" disabled={isSubmitting} className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-purple-600 via-blue-600 to-cyan-500 text-white text-xs font-semibold shadow-lg shadow-purple-600/30 hover:opacity-90 cursor-pointer disabled:cursor-not-allowed disabled:opacity-60">
+                    {isSubmitting ? 'Saving Batch...' : 'Save Batch to Firebase'}
                   </button>
                 </div>
               </form>
             </div>
 
           </div>
+
+          <AnimatePresence>
+            {isScannerOpen && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4">
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                  className="w-full max-w-lg rounded-3xl border border-white/10 bg-slate-950 p-5 shadow-2xl shadow-cyan-500/10"
+                >
+                  <div className="flex items-center justify-between mb-4">
+                    <div>
+                      <h3 className="text-sm font-bold text-white">Upload Master QR</h3>
+                      <p className="text-[11px] text-slate-400">Upload a QR image to fill the batch fields automatically.</p>
+                    </div>
+                    <button type="button" onClick={closeScannerModal} className="text-slate-400 hover:text-white">
+                      <FaTimes />
+                    </button>
+                  </div>
+
+                  <div className="rounded-2xl border border-dashed border-cyan-500/30 bg-black/40 p-5 text-center">
+                    <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-cyan-500/15 text-cyan-300">
+                      <FaCloud />
+                    </div>
+                    <p className="text-sm font-medium text-white">Choose a QR image file</p>
+                    <p className="mt-1 text-[11px] text-slate-400">PNG, JPG, JPEG, or WEBP with a clear QR code.</p>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleQrUpload}
+                      className="mt-4 block w-full cursor-pointer rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs text-slate-300 file:mr-4 file:rounded-lg file:border-0 file:bg-cyan-500 file:px-4 file:py-2 file:text-xs file:font-semibold file:text-white hover:file:bg-cyan-400"
+                    />
+                    {qrPreviewSrc && (
+                      <img
+                        src={qrPreviewSrc}
+                        alt="QR preview"
+                        className="mx-auto mt-4 max-h-56 rounded-2xl border border-white/10 object-contain"
+                      />
+                    )}
+                    {uploadedQrName && <p className="mt-3 text-[11px] text-cyan-300">Selected file: {uploadedQrName}</p>}
+                  </div>
+
+                  <div className="mt-4 flex items-center justify-between text-[11px] text-slate-400">
+                    <span>{scannerStatus}</span>
+                    <button type="button" onClick={closeScannerModal} className="rounded-xl bg-white/10 px-4 py-2 text-white hover:bg-white/15">
+                      Close Scanner
+                    </button>
+                  </div>
+                </motion.div>
+              </div>
+            )}
+          </AnimatePresence>
 
           {/* 3. DATA TABLE & FILTERS SECTION */}
           <div className="p-6 rounded-2xl bg-slate-900/50 border border-white/10 backdrop-blur-xl">
@@ -555,12 +1198,11 @@ export default function Components() {
               <table className="w-full text-left text-xs">
                 <thead>
                   <tr className="border-b border-white/10 text-slate-400 font-mono uppercase text-[10px] tracking-wider">
-                    <th className="pb-3 px-4">QR ID</th>
-                    <th className="pb-3 px-4">Component</th>
-                    <th className="pb-3 px-4">Section & Station</th>
-                    <th className="pb-3 px-4">Zone</th>
-                    <th className="pb-3 px-4">Installation Date</th>
-                    <th className="pb-3 px-4">Health Score</th>
+                    <th className="pb-3 px-4">Master QR</th>
+                    <th className="pb-3 px-4">Batch Details</th>
+                    <th className="pb-3 px-4">Child QR Range</th>
+                    <th className="pb-3 px-4">Clips</th>
+                    <th className="pb-3 px-4">Purchase Date</th>
                     <th className="pb-3 px-4">Status</th>
                     <th className="pb-3 px-4 text-right">Actions</th>
                   </tr>
@@ -568,16 +1210,11 @@ export default function Components() {
                 <tbody className="divide-y divide-white/5 text-slate-300">
                   {filteredComponents.map((item) => (
                     <tr key={item.id} className="hover:bg-white/5 transition-colors">
-                      <td className="py-3.5 px-4 font-mono text-cyan-400 font-semibold">{item.qrId}</td>
-                      <td className="py-3.5 px-4 font-medium text-white">{item.compId}</td>
-                      <td className="py-3.5 px-4">{item.section} ({item.station})</td>
-                      <td className="py-3.5 px-4 text-slate-400">{item.zone}</td>
-                      <td className="py-3.5 px-4 font-mono text-slate-400">{item.installDate}</td>
-                      <td className="py-3.5 px-4 font-bold">
-                        <span className={item.health > 80 ? 'text-emerald-400' : item.health > 50 ? 'text-amber-400' : 'text-red-400'}>
-                          {item.health}/100
-                        </span>
-                      </td>
+                      <td className="py-3.5 px-4 font-mono text-cyan-400 font-semibold">{item.masterQrId || item.qrId}</td>
+                      <td className="py-3.5 px-4 font-medium text-white">{item.batchDetails || item.compId}</td>
+                      <td className="py-3.5 px-4">{item.childQrRange || `${item.section} (${item.station})`}</td>
+                      <td className="py-3.5 px-4 font-bold text-emerald-400">{item.clipsPurchased || 1}</td>
+                      <td className="py-3.5 px-4 font-mono text-slate-400">{item.purchaseDate || item.installDate}</td>
                       <td className="py-3.5 px-4">
                         <span className={`px-2 py-0.5 rounded text-[10px] font-semibold ${
                           item.status === 'Active' ? 'bg-emerald-500/15 text-emerald-400' :
@@ -605,52 +1242,7 @@ export default function Components() {
             </div>
           </div>
 
-          {/* 4. ANALYTICS & AI PREVIEW PANEL */}
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-            
-            {/* Status Pie Chart (6 Cols) */}
-            <div className="lg:col-span-6 p-6 rounded-2xl bg-slate-900/50 border border-white/10 backdrop-blur-xl">
-              <h3 className="text-sm font-bold text-white mb-1">Component Distribution by Status</h3>
-              <p className="text-[11px] text-slate-400 mb-4">Inventory health ratio across network</p>
-              <div className="h-56 w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie data={mockStatusChart} cx="50%" cy="50%" innerRadius={50} outerRadius={70} dataKey="value" paddingAngle={5}>
-                      {mockStatusChart.map((entry, idx) => (
-                        <Cell key={`cell-${idx}`} fill={entry.color} />
-                      ))}
-                    </Pie>
-                    <Tooltip contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', borderRadius: '12px', fontSize: '12px' }} />
-                  </PieChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
 
-            {/* AI Integration Preview Card (6 Cols) */}
-            <div className="lg:col-span-6 p-6 rounded-2xl bg-gradient-to-br from-purple-900/30 via-slate-900 to-black border border-purple-500/30 backdrop-blur-xl flex flex-col justify-between">
-              <div>
-                <div className="flex items-center space-x-2 text-cyan-400 font-mono text-xs mb-3">
-                  <FaBrain className="animate-pulse" />
-                  <span>XGBOOST AI PREDICTIVE MODULE</span>
-                </div>
-                <h3 className="text-lg font-bold text-white mb-2">Automated Risk Analysis Engine</h3>
-                <p className="text-xs text-slate-300 leading-relaxed font-light mb-6">
-                  Once registered clips undergo their first mobile inspection scan, the XGBoost engine calculates maintenance priority (Low, Medium, High) evaluating wear history, environmental exposure, and stress load.
-                </p>
-
-                <div className="p-4 rounded-xl bg-black/50 border border-white/10 text-xs text-slate-400 flex items-center justify-between">
-                  <span>Model Readiness Status:</span>
-                  <span className="text-emerald-400 font-mono">Awaiting Inspection Stream</span>
-                </div>
-              </div>
-
-              <div className="mt-6 pt-4 border-t border-white/10 flex items-center justify-between text-[11px] text-slate-500">
-                <span>AI Accuracy: 98.2%</span>
-                <span>Framework: Scikit-Learn & XGBoost</span>
-              </div>
-            </div>
-
-          </div>
 
         </main>
 
@@ -668,12 +1260,20 @@ export default function Components() {
                   <div className="p-4 rounded-xl bg-white/5 border border-white/10 flex items-center space-x-4">
                     <FaQrcode className="text-4xl text-cyan-400" />
                     <div>
-                      <div className="font-mono text-white font-bold">{selectedComponent.qrId}</div>
-                      <div className="text-slate-400">ID: {selectedComponent.compId}</div>
+                      <div className="font-mono text-white font-bold">{selectedComponent.masterQrId || selectedComponent.qrId}</div>
+                      <div className="text-slate-400">ID: {selectedComponent.batchDetails || selectedComponent.compId}</div>
                     </div>
                   </div>
 
                   <div className="grid grid-cols-2 gap-3 text-slate-300">
+                    <div className="p-3 rounded-lg bg-black/40">
+                      <span className="text-slate-500 text-[10px] block">Child QR Range</span>
+                      <span>{selectedComponent.childQrRange || `${selectedComponent.section}`}</span>
+                    </div>
+                    <div className="p-3 rounded-lg bg-black/40">
+                      <span className="text-slate-500 text-[10px] block">Clip Count</span>
+                      <span>{selectedComponent.clipsPurchased || 1}</span>
+                    </div>
                     <div className="p-3 rounded-lg bg-black/40">
                       <span className="text-slate-500 text-[10px] block">Zone & Division</span>
                       <span>{selectedComponent.zone} - {selectedComponent.division}</span>
@@ -688,7 +1288,11 @@ export default function Components() {
                     </div>
                     <div className="p-3 rounded-lg bg-black/40">
                       <span className="text-slate-500 text-[10px] block">Installation Date</span>
-                      <span>{selectedComponent.installDate}</span>
+                      <span>{selectedComponent.purchaseDate || selectedComponent.installDate}</span>
+                    </div>
+                    <div className="p-3 rounded-lg bg-black/40">
+                      <span className="text-slate-500 text-[10px] block">Purchased From</span>
+                      <span>{selectedComponent.manufacturer}</span>
                     </div>
                   </div>
                 </div>
