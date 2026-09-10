@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { createComponentBatch, listComponentBatches } from '../api/components';
+import { getLoggedInDistrictOfficer } from '../services/authHelper';
 import { BrowserQRCodeReader } from '@zxing/browser';
 import { 
   FaQrcode, FaBrain, FaCloud, FaShieldAlt, FaChartLine, 
@@ -737,9 +738,10 @@ export default function Components() {
     e.preventDefault();
 
     const rangeDetails = parseChildQrRange(formData.childQrRange);
+    const resolvedBatchDetails = formData.batchDetails || formData.masterQrId || 'MASTER';
 
-    if (!formData.masterQrId || !formData.batchDetails || !formData.childQrRange || !formData.manufacturer || !formData.purchaseDate) {
-      alert('Please fill in the master QR, batch details, child QR range, manufacturer, and purchase date.');
+    if (!formData.masterQrId || !formData.childQrRange || !formData.manufacturer || !formData.purchaseDate) {
+      alert('Please fill in the master QR, child QR range, manufacturer, and purchase date.');
       return;
     }
 
@@ -753,12 +755,12 @@ export default function Components() {
 
       const response = await createComponentBatch({
         masterQrId: formData.masterQrId,
-        batchDetails: formData.batchDetails,
+        batchDetails: resolvedBatchDetails,
         childQrRange: rangeDetails.childQrRange,
         purchaseDate: formData.purchaseDate,
         manufacturer: formData.manufacturer,
         batchNo: formData.masterQrId,
-        type: formData.batchDetails,
+        type: resolvedBatchDetails,
         startClip: rangeDetails.childQrStart,
         endClip: rangeDetails.childQrEnd,
         totalClips: rangeDetails.clipsPurchased,
@@ -770,7 +772,7 @@ export default function Components() {
       setNotifications((prev) => [
         {
           id: Date.now(),
-          msg: `Batch ${savedBatch.batchDetails} registered with ${savedBatch.clipsPurchased} clips`,
+          msg: `Batch ${savedBatch.masterQrId} registered with ${savedBatch.clipsPurchased} clips`,
           time: 'Just now',
         },
         ...prev,
@@ -829,6 +831,7 @@ export default function Components() {
 
   const activeRangePreview = parseChildQrRange(formData.childQrRange);
   const statusChartData = buildStatusChartData(componentsList);
+  const districtOfficer = getLoggedInDistrictOfficer();
 
   return (
     <div className="relative h-screen bg-[#030712] text-white font-['Poppins',sans-serif] flex overflow-hidden selection:bg-purple-500 selection:text-white">
@@ -960,8 +963,8 @@ export default function Components() {
             <div className="flex items-center space-x-3 pl-3 border-l border-white/10">
               <FaUserCircle className="text-2xl text-purple-400" />
               <div className="hidden sm:flex flex-col text-left">
-                <span className="text-xs font-medium text-white leading-none">Track Administrator</span>
-                <span className="text-[10px] text-slate-400">Railway Engineering</span>
+                <span className="text-xs font-medium text-white leading-none">{districtOfficer.title}</span>
+                <span className="text-[10px] text-slate-400">{districtOfficer.subtitle}</span>
               </div>
             </div>
           </div>
@@ -1003,7 +1006,7 @@ export default function Components() {
             
             {/* Component Registration Form (8 Cols) */}
             <div className="lg:col-span-8 p-6 rounded-2xl bg-slate-900/50 border border-white/10 backdrop-blur-xl">
-              <div className="flex items-center justify-between mb-6">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
                 <div>
                   <h2 className="text-sm font-bold text-white flex items-center gap-2">
                     <FaPlus className="text-cyan-400" />
@@ -1011,39 +1014,28 @@ export default function Components() {
                   </h2>
                   <p className="text-[11px] text-slate-400">Initialize clip metadata before etching laser QR identity code</p>
                 </div>
+                <div className="flex items-center gap-2">
+                  <button 
+                    type="button" 
+                    onClick={handleOpenScanner} 
+                    className="px-3.5 py-2 rounded-xl bg-cyan-500/15 border border-cyan-400/30 text-cyan-300 text-xs font-semibold hover:bg-cyan-500/25 flex items-center gap-2 cursor-pointer transition-all shrink-0"
+                  >
+                    <FaCamera className="text-xs" />
+                    <span>Scan / Upload Master QR</span>
+                  </button>
+                </div>
               </div>
 
               <form onSubmit={handleSaveComponent} className="space-y-4">
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   <div>
                     <label className="text-[11px] text-slate-300 mb-1 block">{qrFieldHints.masterQrId} *</label>
-                    <div className="flex gap-2">
-                      <input 
-                        type="text" 
-                        name="masterQrId"
-                        value={formData.masterQrId}
-                        onChange={handleInputChange}
-                        placeholder="e.g. C0001"
-                        className="w-full px-3 py-2 rounded-xl bg-black/40 border border-white/10 text-white placeholder:text-slate-600 text-xs focus:outline-none focus:border-purple-500"
-                        required
-                      />
-                      <button type="button" onClick={handleOpenScanner} className="px-3 py-2 rounded-xl bg-cyan-500/15 border border-cyan-400/30 text-cyan-300 text-xs font-semibold hover:bg-cyan-500/25 shrink-0">
-                        <span className="flex items-center gap-2"><FaCamera />Scan</span>
-                      </button>
-                      <button type="button" onClick={handleOpenScanner} className="px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-slate-200 text-xs font-semibold hover:bg-white/10 shrink-0">
-                        <span className="flex items-center gap-2"><FaUpload />Upload QR</span>
-                      </button>
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="text-[11px] text-slate-300 mb-1 block">{qrFieldHints.batchDetails} *</label>
                     <input 
                       type="text" 
-                      name="batchDetails"
-                      value={formData.batchDetails}
+                      name="masterQrId"
+                      value={formData.masterQrId}
                       onChange={handleInputChange}
-                      placeholder="e.g. MASTER"
+                      placeholder="e.g. RC0001"
                       className="w-full px-3 py-2 rounded-xl bg-black/40 border border-white/10 text-white placeholder:text-slate-600 text-xs focus:outline-none focus:border-purple-500"
                       required
                     />
@@ -1250,52 +1242,7 @@ export default function Components() {
             </div>
           </div>
 
-          {/* 4. ANALYTICS & AI PREVIEW PANEL */}
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-            
-            {/* Status Pie Chart (6 Cols) */}
-            <div className="lg:col-span-6 p-6 rounded-2xl bg-slate-900/50 border border-white/10 backdrop-blur-xl">
-              <h3 className="text-sm font-bold text-white mb-1">Component Distribution by Status</h3>
-              <p className="text-[11px] text-slate-400 mb-4">Inventory health ratio across network</p>
-              <div className="h-56 w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie data={statusChartData} cx="50%" cy="50%" innerRadius={50} outerRadius={70} dataKey="value" paddingAngle={5}>
-                        {statusChartData.map((entry, idx) => (
-                        <Cell key={`cell-${idx}`} fill={entry.color} />
-                      ))}
-                    </Pie>
-                    <Tooltip contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', borderRadius: '12px', fontSize: '12px' }} />
-                  </PieChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
 
-            {/* AI Integration Preview Card (6 Cols) */}
-            <div className="lg:col-span-6 p-6 rounded-2xl bg-gradient-to-br from-purple-900/30 via-slate-900 to-black border border-purple-500/30 backdrop-blur-xl flex flex-col justify-between">
-              <div>
-                <div className="flex items-center space-x-2 text-cyan-400 font-mono text-xs mb-3">
-                  <FaBrain className="animate-pulse" />
-                  <span>XGBOOST AI PREDICTIVE MODULE</span>
-                </div>
-                <h3 className="text-lg font-bold text-white mb-2">Automated Risk Analysis Engine</h3>
-                <p className="text-xs text-slate-300 leading-relaxed font-light mb-6">
-                  Once registered clips undergo their first mobile inspection scan, the XGBoost engine calculates maintenance priority (Low, Medium, High) evaluating wear history, environmental exposure, and stress load.
-                </p>
-
-                <div className="p-4 rounded-xl bg-black/50 border border-white/10 text-xs text-slate-400 flex items-center justify-between">
-                  <span>Model Readiness Status:</span>
-                  <span className="text-emerald-400 font-mono">Awaiting Inspection Stream</span>
-                </div>
-              </div>
-
-              <div className="mt-6 pt-4 border-t border-white/10 flex items-center justify-between text-[11px] text-slate-500">
-                <span>AI Accuracy: 98.2%</span>
-                <span>Framework: Scikit-Learn & XGBoost</span>
-              </div>
-            </div>
-
-          </div>
 
         </main>
 

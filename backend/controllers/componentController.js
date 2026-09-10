@@ -124,13 +124,13 @@ async function createBatch(req, res) {
 		});
 
 		const normalizedMasterQrId = String(masterQrId || scannedQr?.masterQrId || '').trim();
-		const normalizedBatchDetails = String(batchDetails || scannedQr?.batchDetails || '').trim();
+		const normalizedBatchDetails = String(batchDetails || scannedQr?.batchDetails || normalizedMasterQrId || 'MASTER').trim();
 		const normalizedChildQrRange = String(childQrRange || scannedQr?.childQrRange || '').trim();
 
-		if (!normalizedMasterQrId || !normalizedBatchDetails || !normalizedChildQrRange || !purchaseDate || !manufacturer) {
+		if (!normalizedMasterQrId || !normalizedChildQrRange || !purchaseDate || !manufacturer) {
 			return res.status(400).json({
 				success: false,
-				message: 'Master QR, batch details, child QR range, purchase date, and manufacturer are required.',
+				message: 'Master QR, child QR range, purchase date, and manufacturer are required.',
 			});
 		}
 

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
+import { getLoggedInDistrictOfficer } from '../services/authHelper';
 import { BrowserQRCodeReader } from '@zxing/browser';
 import { lookupComponentByQr, saveInspectionRecord, listInspectionRecords } from '../api/inspections';
 import { 
@@ -290,6 +291,7 @@ const mockHealthTrend = [
    ========================================================================== */
 export default function Inspection() {
   const navigate = useNavigate();
+  const districtOfficer = getLoggedInDistrictOfficer();
 
   // Navigation & View State
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -712,8 +714,8 @@ export default function Inspection() {
             <div className="flex items-center space-x-3 pl-3 border-l border-white/10">
               <FaUserCircle className="text-2xl text-purple-400" />
               <div className="hidden sm:flex flex-col text-left">
-                <span className="text-xs font-medium text-white leading-none">Officer K. Sharma</span>
-                <span className="text-[10px] text-slate-400">Chief Track Inspector</span>
+                <span className="text-xs font-medium text-white leading-none">{districtOfficer.title}</span>
+                <span className="text-[10px] text-slate-400">{districtOfficer.subtitle}</span>
               </div>
             </div>
           </div>
@@ -722,35 +724,7 @@ export default function Inspection() {
         {/* WORKSPACE BODY */}
         <main className="p-8 space-y-8 max-w-7xl w-full mx-auto">
 
-          {/* 1. TOP STATS CARDS */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
-            {[
-              { title: "Today's Inspections", count: '48', trend: '+12%', isPositive: true, icon: FaCalendarAlt, color: 'from-blue-600 to-cyan-400' },
-              { title: 'Pending Inspections', count: '14', trend: '-5%', isPositive: true, icon: FaSync, color: 'from-amber-600 to-yellow-400' },
-              { title: 'Completed Inspections', count: '1,280', trend: '+18%', isPositive: true, icon: FaCheckCircle, color: 'from-emerald-600 to-teal-400' },
-              { title: 'Critical Components', count: '3', trend: '+1', isPositive: false, icon: FaExclamationTriangle, color: 'from-red-600 to-rose-400' },
-              { title: 'Healthy Components', count: '1,215', trend: '95%', isPositive: true, icon: FaShieldAlt, color: 'from-purple-600 to-indigo-400' },
-              { title: 'Avg Health Score', count: '91.4', trend: '+2.1', isPositive: true, icon: FaChartLine, color: 'from-cyan-600 to-blue-500' },
-            ].map((stat, idx) => {
-              const Icon = stat.icon;
-              return (
-                <div key={idx} className="p-5 rounded-2xl bg-slate-900/50 border border-white/10 backdrop-blur-xl hover:border-purple-500/40 transition-all">
-                  <div className="flex items-center justify-between mb-3">
-                    <div className={`p-2.5 rounded-xl bg-gradient-to-tr ${stat.color} text-white shadow-md`}>
-                      <Icon className="text-base" />
-                    </div>
-                    <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded ${
-                      stat.isPositive ? 'bg-emerald-500/15 text-emerald-400' : 'bg-red-500/15 text-red-400'
-                    }`}>
-                      {stat.trend}
-                    </span>
-                  </div>
-                  <div className="text-2xl font-bold text-white mb-1">{stat.count}</div>
-                  <div className="text-[11px] text-slate-400 truncate">{stat.title}</div>
-                </div>
-              );
-            })}
-          </div>
+
 
           {/* 2. QR SCANNER & COMPONENT INFO ROW */}
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
@@ -997,239 +971,7 @@ export default function Inspection() {
 
           </div>
 
-          {/* 3. INSPECTION FORM & LIVE SUMMARY ROW */}
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-            
-            {/* Inspection Form (8 cols) */}
-            <div className="lg:col-span-8 p-6 rounded-2xl bg-slate-900/50 border border-white/10 backdrop-blur-xl">
-              <h3 className="text-sm font-bold text-white mb-1">Record Field Inspection Data</h3>
-              <p className="text-[11px] text-slate-400 mb-6">Log clip physical state for AI telemetry analysis</p>
 
-              <form onSubmit={handleSaveInspection} className="space-y-4">
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                  <div>
-                    <label className="text-[11px] text-slate-300 mb-1 block">Inspection Date</label>
-                    <input type="date" name="inspectionDate" value={formState.inspectionDate} onChange={handleInputChange} className="w-full px-3 py-2 rounded-xl bg-black/40 border border-white/10 text-white text-xs" />
-                  </div>
-                  <div>
-                    <label className="text-[11px] text-slate-300 mb-1 block">Inspector Name</label>
-                    <input type="text" name="inspectorName" value={formState.inspectorName} onChange={handleInputChange} className="w-full px-3 py-2 rounded-xl bg-black/40 border border-white/10 text-white text-xs" />
-                  </div>
-                  <div>
-                    <label className="text-[11px] text-slate-300 mb-1 block">Inspector Badge ID</label>
-                    <input type="text" name="inspectorId" value={formState.inspectorId} onChange={handleInputChange} className="w-full px-3 py-2 rounded-xl bg-black/40 border border-white/10 text-white text-xs" />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                  <div>
-                    <label className="text-[11px] text-slate-300 mb-1 block">Clip Condition *</label>
-                    <select name="condition" value={formState.condition} onChange={handleInputChange} className="w-full px-3 py-2 rounded-xl bg-black/40 border border-white/10 text-white text-xs focus:outline-none">
-                      <option value="Healthy">Healthy / Normal</option>
-                      <option value="Loose">Loose / Dislodged</option>
-                      <option value="Worn">Worn / Surface Wear</option>
-                      <option value="Cracked">Cracked</option>
-                      <option value="Corroded">Corroded</option>
-                      <option value="Broken">Broken / Severed</option>
-                      <option value="Replacement Required">Replacement Required</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="text-[11px] text-slate-300 mb-1 block">Severity Level *</label>
-                    <select name="severity" value={formState.severity} onChange={handleInputChange} className="w-full px-3 py-2 rounded-xl bg-black/40 border border-white/10 text-white text-xs focus:outline-none">
-                      <option value="Low">Low Risk</option>
-                      <option value="Medium">Medium Risk</option>
-                      <option value="High">High Risk</option>
-                      <option value="Critical">Critical Alert</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="text-[11px] text-slate-300 mb-1 block">Weather Conditions</label>
-                    <select name="weather" value={formState.weather} onChange={handleInputChange} className="w-full px-3 py-2 rounded-xl bg-black/40 border border-white/10 text-white text-xs focus:outline-none">
-                      <option value="Sunny">Clear / Sunny</option>
-                      <option value="Rain">Rain / Monsoon</option>
-                      <option value="Fog">Heavy Fog</option>
-                      <option value="Night">Night Operation</option>
-                    </select>
-                  </div>
-                </div>
-
-                <div className="flex items-center space-x-3 p-3 rounded-xl bg-black/40 border border-white/5">
-                  <input type="checkbox" id="maint" name="maintenancePerformed" checked={formState.maintenancePerformed} onChange={handleInputChange} className="rounded accent-purple-600" />
-                  <label htmlFor="maint" className="text-xs text-slate-300 cursor-pointer">Immediate Maintenance or Tightening Performed On-Site</label>
-                </div>
-
-                <div>
-                  <label className="text-[11px] text-slate-300 mb-1 block">Inspector Field Remarks</label>
-                  <textarea name="remarks" value={formState.remarks} onChange={handleInputChange} rows={3} placeholder="Enter observations..." className="w-full px-3 py-2 rounded-xl bg-black/40 border border-white/10 text-white text-xs focus:outline-none" />
-                </div>
-
-                <div className="flex justify-end space-x-3 pt-2">
-                  <button type="submit" className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-purple-600 via-blue-600 to-cyan-500 text-white text-xs font-semibold shadow-lg shadow-purple-600/30 hover:opacity-90 cursor-pointer">
-                    Save Inspection to Cloud
-                  </button>
-                </div>
-              </form>
-            </div>
-
-            {/* AI Prediction Preview (4 cols) */}
-            <div className="lg:col-span-4 p-6 rounded-2xl bg-gradient-to-br from-purple-900/30 via-slate-900 to-black border border-purple-500/30 backdrop-blur-xl flex flex-col justify-between">
-              <div>
-                <div className="flex items-center space-x-2 text-cyan-400 font-mono text-xs mb-3">
-                  <FaBrain className="animate-pulse" />
-                  <span>XGBOOST MODEL PREVIEW</span>
-                </div>
-                <h3 className="text-sm font-bold text-white mb-2">Predicted Health & Maintenance</h3>
-
-                {/* Score Gauge Circle */}
-                <div className="my-6 flex flex-col items-center justify-center">
-                  <div className="relative w-32 h-32 rounded-full border-4 border-cyan-400/20 flex items-center justify-center bg-black/40 shadow-inner">
-                    <div className="text-center">
-                      <span className="text-3xl font-extrabold text-white">92</span>
-                      <span className="text-xs text-slate-400 block font-mono">/ 100</span>
-                    </div>
-                  </div>
-                  <span className="text-xs font-semibold text-emerald-400 mt-2">OPTIMAL INTEGRITY</span>
-                </div>
-
-                <div className="space-y-2 text-xs">
-                  <div className="flex justify-between p-2 rounded bg-black/40">
-                    <span className="text-slate-400">Risk Level:</span>
-                    <span className="text-emerald-400 font-semibold">Low</span>
-                  </div>
-                  <div className="flex justify-between p-2 rounded bg-black/40">
-                    <span className="text-slate-400">Failure Probability:</span>
-                    <span className="text-cyan-400 font-mono">1.8%</span>
-                  </div>
-                  <div className="flex justify-between p-2 rounded bg-black/40">
-                    <span className="text-slate-400">Expected Life:</span>
-                    <span className="text-slate-200">14.2 Years</span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="mt-4 pt-3 border-t border-white/10 text-[10px] text-slate-500 text-center font-mono">
-                Model: Python XGBoost v2.4 | Sync Latency: 12ms
-              </div>
-            </div>
-
-          </div>
-
-          {/* 4. INSPECTION HISTORY TABLE SECTION */}
-          <div className="p-6 rounded-2xl bg-slate-900/50 border border-white/10 backdrop-blur-xl">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
-              <div>
-                <h3 className="text-sm font-bold text-white">Clip Inspection Audit Trail</h3>
-                <p className="text-[11px] text-slate-400">
-                  {activeComponent ? `Historical records for component ${activeComponent.uClipId || activeComponent.batchNumber}` : 'Historical inspection audit trail across all registered track components'}
-                </p>
-              </div>
-              <button onClick={() => alert('Exporting PDF Report...')} className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-purple-600 to-blue-600 text-white text-xs font-medium flex items-center space-x-2 cursor-pointer">
-                <FaDownload className="text-[10px]" />
-                <span>Export History PDF</span>
-              </button>
-            </div>
-
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs">
-                <thead>
-                  <tr className="border-b border-white/10 text-slate-400 font-mono uppercase text-[10px] tracking-wider">
-                    <th className="pb-3 px-4">Date & Time</th>
-                    <th className="pb-3 px-4">Inspector</th>
-                    <th className="pb-3 px-4">Condition</th>
-                    <th className="pb-3 px-4">Severity</th>
-                    <th className="pb-3 px-4">Health Score</th>
-                    <th className="pb-3 px-4">Maintenance</th>
-                    <th className="pb-3 px-4">Remarks</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-white/5 text-slate-300">
-                  {historyList.map((row) => (
-                    <tr key={row.id} className="hover:bg-white/5 transition-colors">
-                      <td className="py-3.5 px-4 font-mono text-slate-400">{row.date}</td>
-                      <td className="py-3.5 px-4 font-medium text-white">{row.inspector}</td>
-                      <td className="py-3.5 px-4">{row.condition}</td>
-                      <td className="py-3.5 px-4">
-                        <span className={`px-2 py-0.5 rounded text-[10px] font-semibold ${
-                          row.severity === 'Low' ? 'bg-emerald-500/15 text-emerald-400' :
-                          row.severity === 'Medium' ? 'bg-amber-500/15 text-amber-400' : 'bg-red-500/15 text-red-400'
-                        }`}>
-                          {row.severity}
-                        </span>
-                      </td>
-                      <td className="py-3.5 px-4 font-bold text-cyan-400">{row.health}/100</td>
-                      <td className="py-3.5 px-4">{row.maintenance}</td>
-                      <td className="py-3.5 px-4 text-slate-400 max-w-xs truncate">{row.remarks}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-          {/* 5. TIMELINE & RECHARTS ROW */}
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-            
-            {/* Timeline Panel (5 cols) */}
-            <div className="lg:col-span-5 p-6 rounded-2xl bg-slate-900/50 border border-white/10 backdrop-blur-xl">
-              <h3 className="text-sm font-bold text-white mb-1">Lifecycle Events Timeline</h3>
-              <p className="text-[11px] text-slate-400 mb-6">Component deployment milestones</p>
-
-              <div className="relative pl-4 border-l border-white/10 space-y-6">
-                {mockComponentTimeline.map((item, idx) => (
-                  <div key={idx} className="relative">
-                    <span className="absolute -left-[21px] top-1 w-2.5 h-2.5 rounded-full bg-cyan-400 border-2 border-slate-900" />
-                    <div className="text-xs font-semibold text-white">{item.title}</div>
-                    <div className="text-[11px] text-slate-400 mt-0.5">{item.desc}</div>
-                    <div className="text-[10px] text-slate-500 font-mono mt-1">{item.time}</div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Recharts Health Trend (7 cols) */}
-            <div className="lg:col-span-7 p-6 rounded-2xl bg-slate-900/50 border border-white/10 backdrop-blur-xl">
-              <h3 className="text-sm font-bold text-white mb-1">Clip Health Progression</h3>
-              <p className="text-[11px] text-slate-400 mb-6">Telemetry scores over time</p>
-              
-              <div className="h-64 w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={mockHealthTrend}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
-                    <XAxis dataKey="month" stroke="#64748b" fontSize={11} />
-                    <YAxis stroke="#64748b" fontSize={11} domain={[0, 100]} />
-                    <Tooltip contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', borderRadius: '12px', fontSize: '12px' }} />
-                    <Area type="monotone" dataKey="health" stroke="#00D2FF" fill="#00D2FF" fillOpacity={0.15} strokeWidth={2} />
-                  </AreaChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
-
-          </div>
-
-          {/* 6. QUICK ACTION BUTTONS */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            {[
-              { label: 'Start New QR Inspection', icon: FaQrcode, color: 'from-purple-600 to-blue-600', path: '/inspections' },
-              { label: 'View Asset Inventory', icon: FaLayerGroup, color: 'from-cyan-600 to-teal-600', path: '/components' },
-              { label: 'Run Full AI Analysis', icon: FaBrain, color: 'from-blue-600 to-indigo-600', path: '/ai-analysis' },
-              { label: 'Export Telemetry Report', icon: FaFolder, color: 'from-slate-700 to-slate-800', path: '/reports' },
-            ].map((btn, idx) => {
-              const Icon = btn.icon;
-              return (
-                <button 
-                  key={idx}
-                  onClick={() => navigate(btn.path)}
-                  className={`p-4 rounded-2xl bg-gradient-to-r ${btn.color} text-white font-medium text-xs shadow-lg flex items-center justify-center space-x-3 hover:opacity-90 transition-all cursor-pointer`}
-                >
-                  <Icon className="text-sm" />
-                  <span>{btn.label}</span>
-                </button>
-              );
-            })}
-          </div>
 
         </main>
 
