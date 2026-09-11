@@ -14,7 +14,10 @@ import {
   FaMicrochip,
   FaQrcode,
   FaShieldAlt,
-  FaSpinner
+  FaSpinner,
+  FaTrain,
+  FaTools,
+  FaMapMarkerAlt
 } from 'react-icons/fa';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -23,7 +26,6 @@ import {
   setPersistence,
   signInWithEmailAndPassword
 } from 'firebase/auth';
-import Aurora from '../components/Aurora';
 import { auth } from '../services/firebase';
 import { loginUser, setAuthToken } from '../services/api';
 
@@ -50,124 +52,6 @@ function getAuthErrorMessage(error) {
   }
 
   return error?.response?.data?.message || error?.message || 'Failed to sign in.';
-}
-
-function ShapeGrid({
-  speed = 0.5,
-  squareSize = 40,
-  direction = 'diagonal',
-  borderColor = '#2F293A',
-  hoverFillColor = '#222222',
-  shape = 'square',
-  hoverTrailAmount = 0
-}) {
-  const canvasRef = useRef(null);
-  const hoverPos = useRef({ x: -1000, y: -1000 });
-
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-
-    const ctx = canvas.getContext('2d');
-    let animationFrameId;
-    let offset = 0;
-
-    const resize = () => {
-      canvas.width = canvas.parentElement.offsetWidth;
-      canvas.height = canvas.parentElement.offsetHeight;
-    };
-
-    const handleMouseMove = (event) => {
-      const rect = canvas.getBoundingClientRect();
-      hoverPos.current = {
-        x: event.clientX - rect.left,
-        y: event.clientY - rect.top
-      };
-    };
-
-    const handleMouseLeave = () => {
-      hoverPos.current = { x: -1000, y: -1000 };
-    };
-
-    window.addEventListener('resize', resize);
-    resize();
-
-    canvas.parentElement.addEventListener('mousemove', handleMouseMove);
-    canvas.parentElement.addEventListener('mouseleave', handleMouseLeave);
-
-    const render = () => {
-      offset += speed;
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-      const cols = Math.ceil(canvas.width / squareSize) + 2;
-      const rows = Math.ceil(canvas.height / squareSize) + 2;
-
-      let offsetX = 0;
-      let offsetY = 0;
-
-      if (direction === 'diagonal') {
-        offsetX = offset % squareSize;
-        offsetY = offset % squareSize;
-      } else if (direction === 'right') {
-        offsetX = offset % squareSize;
-      } else if (direction === 'down') {
-        offsetY = offset % squareSize;
-      } else if (direction === 'left') {
-        offsetX = -(offset % squareSize);
-      } else if (direction === 'up') {
-        offsetY = -(offset % squareSize);
-      }
-
-      ctx.strokeStyle = borderColor;
-      ctx.lineWidth = 1;
-
-      for (let i = -1; i < cols; i += 1) {
-        for (let j = -1; j < rows; j += 1) {
-          const x = i * squareSize + offsetX;
-          const y = j * squareSize + offsetY;
-
-          const dist = Math.hypot(
-            x + squareSize / 2 - hoverPos.current.x,
-            y + squareSize / 2 - hoverPos.current.y
-          );
-
-          if (dist < squareSize * (1 + hoverTrailAmount)) {
-            ctx.fillStyle = hoverFillColor;
-            if (shape === 'square') {
-              ctx.fillRect(x, y, squareSize, squareSize);
-            } else {
-              ctx.beginPath();
-              ctx.arc(x + squareSize / 2, y + squareSize / 2, squareSize / 2 - 2, 0, Math.PI * 2);
-              ctx.fill();
-            }
-          }
-
-          if (shape === 'square') {
-            ctx.strokeRect(x, y, squareSize, squareSize);
-          } else {
-            ctx.beginPath();
-            ctx.arc(x + squareSize / 2, y + squareSize / 2, squareSize / 2 - 2, 0, Math.PI * 2);
-            ctx.stroke();
-          }
-        }
-      }
-
-      animationFrameId = requestAnimationFrame(render);
-    };
-
-    render();
-
-    return () => {
-      cancelAnimationFrame(animationFrameId);
-      window.removeEventListener('resize', resize);
-      if (canvas.parentElement) {
-        canvas.parentElement.removeEventListener('mousemove', handleMouseMove);
-        canvas.parentElement.removeEventListener('mouseleave', handleMouseLeave);
-      }
-    };
-  }, [speed, squareSize, direction, borderColor, hoverFillColor, shape, hoverTrailAmount]);
-
-  return <canvas ref={canvasRef} className="absolute inset-0 z-0 pointer-events-auto" />;
 }
 
 export default function Login() {
@@ -232,144 +116,157 @@ export default function Login() {
   };
 
   return (
-    <div className="relative flex min-h-screen flex-col justify-between overflow-x-hidden bg-[#050816] font-['Poppins',sans-serif] text-white selection:bg-purple-500 selection:text-white">
-      <div className="pointer-events-none fixed inset-0 z-0 opacity-40">
-        <Aurora colorStops={['#5227FF', '#7cff67', '#00d2ff']} blend={0.6} amplitude={1.2} speed={0.8} />
-      </div>
-
-      <div className="pointer-events-none fixed inset-0 z-0 opacity-20">
-        <ShapeGrid
-          speed={0.4}
-          squareSize={45}
-          direction="diagonal"
-          borderColor="#3b82f6"
-          hoverFillColor="#8b5cf6"
-          shape="square"
-          hoverTrailAmount={1}
-        />
-      </div>
-
-      <div className="pointer-events-none fixed left-10 top-1/4 z-0 h-96 w-96 rounded-full bg-purple-600/10 blur-[140px]" />
-      <div className="pointer-events-none fixed bottom-10 right-10 z-0 h-[30rem] w-[30rem] rounded-full bg-cyan-500/10 blur-[150px]" />
-
+    <div className="relative flex min-h-screen flex-col justify-between overflow-x-hidden bg-slate-50 font-['Poppins',sans-serif] text-slate-900 selection:bg-blue-600 selection:text-white">
+      
       <div className="relative z-10 flex min-h-screen flex-col justify-between">
-        <header className="fixed left-0 right-0 top-0 z-50 w-full border-b border-white/10 bg-black/20 px-6 py-4 backdrop-blur-md">
+        
+        {/* Top Official Indian Railways Banner Strip */}
+        <div className="bg-[#002855] text-white text-[11px] sm:text-xs py-1.5 px-4 sm:px-6 border-b border-blue-900/60">
           <div className="mx-auto flex max-w-7xl items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <span className="font-bold tracking-wide text-amber-300">भारतीय रेल</span>
+              <span className="text-blue-300">|</span>
+              <span className="font-semibold tracking-wider">INDIAN RAILWAYS</span>
+              <span className="hidden md:inline-block text-blue-200 font-normal">
+                • Ministry of Railways, Government of India
+              </span>
+            </div>
+            <div className="flex items-center space-x-4 font-mono text-[10.5px] text-blue-200">
+              <span className="text-emerald-400 font-semibold">RDSO T-3701 COMPLIANT</span>
+              <span className="hidden md:inline text-blue-400">|</span>
+              <span className="hidden md:inline text-blue-200">BROAD GAUGE 1676mm</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Enterprise Navbar */}
+        <header className="border-b border-slate-200 bg-white/95 px-6 py-3.5 backdrop-blur-md shadow-xs">
+          <div className="mx-auto flex max-w-7xl items-center justify-between">
+            
             <div className="flex items-center space-x-3">
               <button
                 type="button"
                 onClick={() => navigate('/')}
-                className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-slate-300 transition-all hover:bg-white/10 hover:text-white"
+                className="flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-slate-50 text-slate-600 transition-all hover:bg-slate-100 hover:text-slate-900 cursor-pointer"
                 aria-label="Back to landing page"
               >
-                <FaArrowLeft className="text-sm" />
+                <FaArrowLeft className="text-xs" />
               </button>
 
               <div onClick={() => navigate('/')} className="flex cursor-pointer items-center space-x-3">
-                <div className="rounded-xl bg-gradient-to-tr from-purple-600 via-blue-600 to-cyan-400 p-2.5 text-white shadow-lg shadow-purple-500/20">
-                  <FaQrcode className="text-xl" />
+                <div className="rounded-xl bg-gradient-to-tr from-[#003366] via-[#004b87] to-[#0284c7] p-2 text-white shadow-md shadow-blue-900/20">
+                  <FaTrain className="text-lg text-amber-300" />
                 </div>
                 <div className="flex flex-col">
-                  <span className="leading-none bg-gradient-to-r from-white via-slate-200 to-purple-300 bg-clip-text text-base font-bold tracking-wide text-transparent">
-                    RailClip<span className="text-cyan-400">AI</span>
+                  <span className="leading-none text-base font-black tracking-wide text-slate-900">
+                    RailClip<span className="text-blue-600">AI</span>
                   </span>
-                  <span className="font-mono text-[10px] tracking-wider text-slate-400">TRACK MAINTENANCE ENGINE</span>
+                  <span className="font-mono text-[9.5px] font-semibold tracking-wider text-slate-500">
+                    INDIAN RAILWAYS FASTENER TELEMETRY
+                  </span>
                 </div>
               </div>
             </div>
 
-            <div className="flex items-center space-x-4 font-mono text-xs text-slate-400">
-              <div className="flex items-center space-x-2 rounded-lg border border-white/10 bg-white/5 px-3 py-1.5">
-                <span className="h-2 w-2 animate-ping rounded-full bg-emerald-400" />
-                <span>SYS REALTIME: {currentTime.toLocaleTimeString()}</span>
+            <div className="flex items-center space-x-3 font-mono text-xs text-slate-600">
+              <div className="flex items-center space-x-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5">
+                <span className="h-2 w-2 animate-ping rounded-full bg-emerald-500" />
+                <span className="text-[11px] text-slate-700">SYS TIME: {currentTime.toLocaleTimeString()}</span>
               </div>
             </div>
+
           </div>
         </header>
 
-        <main className="mx-auto flex w-full max-w-7xl flex-1 items-center justify-center px-6 pb-16 pt-32">
-          <div className="grid w-full grid-cols-1 items-center gap-12 lg:grid-cols-12">
+        {/* Main Login Workspace */}
+        <main className="mx-auto flex w-full max-w-7xl flex-1 items-center justify-center px-6 py-10">
+          <div className="grid w-full grid-cols-1 items-center gap-10 lg:grid-cols-12">
+            
+            {/* Left Column: Indian Railways P-Way Technical Showcase */}
             <motion.div
-              initial={{ opacity: 0, x: -30 }}
+              initial={{ opacity: 0, x: -25 }}
               animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.6 }}
-              className="space-y-8 lg:col-span-7"
+              transition={{ duration: 0.5 }}
+              className="space-y-6 lg:col-span-7"
             >
-              <div className="inline-flex items-center space-x-2 rounded-full border border-purple-500/30 bg-purple-950/50 px-3.5 py-1.5 text-xs font-medium text-purple-300 shadow-inner shadow-purple-500/10 backdrop-blur-md">
-                <FaBrain className="animate-pulse text-cyan-400" />
-                <span>Next-Gen Railway Predictive Intelligence</span>
+              <div className="inline-flex items-center space-x-2 rounded-full border border-blue-200 bg-blue-50 px-3.5 py-1.5 text-xs font-semibold text-blue-900">
+                <FaTrain className="text-amber-600" />
+                <span>Divisional Permanent Way (P-Way) Safety Portal</span>
               </div>
 
-              <div className="space-y-4">
-                <h1 className="bg-gradient-to-br from-white via-slate-100 to-slate-400 bg-clip-text text-4xl font-extrabold leading-tight tracking-tight text-transparent sm:text-5xl lg:text-6xl">
-                  Welcome to the Future of Railway Maintenance
+              <div className="space-y-3">
+                <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black leading-tight tracking-tight text-slate-900">
+                  Intelligent Elastic Rail Clip Management for <span className="text-[#004b87]">Indian Railways</span>
                 </h1>
-                <p className="max-w-xl text-sm font-light leading-relaxed text-slate-400 sm:text-base">
-                  Manage railway infrastructure intelligently through AI-powered inspection, laser QR identification, cloud asset tracking, and predictive maintenance.
+                <p className="max-w-xl text-xs sm:text-sm font-normal leading-relaxed text-slate-600">
+                  Authorised portal for <strong>Senior Section Engineers (P-Way)</strong>, <strong>ADENs</strong>, and <strong>Track Officers</strong> to monitor laser-QR serialized rail clips, predictive toe-load loss analytics, and RDSO safety compliance.
                 </p>
               </div>
 
+              {/* 4 Feature Badges */}
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
                 {[
-                  { icon: <FaBrain className="text-purple-400" />, label: 'AI Powered' },
-                  { icon: <FaQrcode className="text-cyan-400" />, label: 'QR Enabled' },
-                  { icon: <FaCloud className="text-blue-400" />, label: 'Cloud Connected' },
-                  { icon: <FaShieldAlt className="text-emerald-400" />, label: 'Predictive Care' }
+                  { icon: <FaBrain className="text-amber-600" />, label: 'XGBoost AI Risk' },
+                  { icon: <FaQrcode className="text-blue-600" />, label: 'Laser QR Coding' },
+                  { icon: <FaMapMarkerAlt className="text-blue-600" />, label: 'GIS GPS Tagging' },
+                  { icon: <FaShieldAlt className="text-emerald-600" />, label: 'RDSO Verified' }
                 ].map((item) => (
                   <div
                     key={item.label}
-                    className="flex items-center space-x-2 rounded-xl border border-white/10 bg-white/5 p-3 text-xs font-medium text-slate-200 backdrop-blur-md"
+                    className="flex items-center space-x-2 rounded-xl border border-slate-200 bg-white p-3 text-xs font-medium text-slate-800 shadow-xs"
                   >
                     {item.icon}
-                    <span>{item.label}</span>
+                    <span className="text-[11px] font-semibold">{item.label}</span>
                   </div>
                 ))}
               </div>
 
-              <div className="relative overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-r from-purple-900/20 via-black/40 to-cyan-900/20 p-6 backdrop-blur-xl">
-                <div className="mb-4 flex items-center justify-between">
-                  <div className="flex items-center space-x-2 font-mono text-xs text-slate-300">
-                    <FaMicrochip className="text-cyan-400" />
-                    <span>XGBOOST MAINTENANCE RISK ENGINE</span>
+              {/* Engineering Stats Box */}
+              <div className="relative overflow-hidden rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                <div className="mb-3 flex items-center justify-between border-b border-slate-100 pb-2.5">
+                  <div className="flex items-center space-x-2 font-mono text-xs text-slate-700 font-bold">
+                    <FaMicrochip className="text-blue-600" />
+                    <span>INDIAN RAILWAYS FASTENER NETWORK STATUS</span>
                   </div>
-                  <span className="rounded border border-emerald-500/30 bg-emerald-500/20 px-2 py-0.5 font-mono text-[10px] text-emerald-400">
-                    ONLINE
+                  <span className="rounded border border-emerald-200 bg-emerald-50 px-2 py-0.5 font-mono text-[10px] text-emerald-700 font-bold">
+                    ACTIVE
                   </span>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4 text-center sm:grid-cols-4">
+                <div className="grid grid-cols-2 gap-3 text-center sm:grid-cols-4">
                   {[
-                    { value: '5,000+', label: 'Railway Assets' },
-                    { value: '25,000+', label: 'QR Scans' },
-                    { value: '98%', label: 'Prediction Acc.' },
-                    { value: '365 Days', label: 'Tracking' }
+                    { value: '5,842+', label: 'Registered ERC Clips' },
+                    { value: '1676 mm', label: 'Broad Gauge Track' },
+                    { value: '25.0 T', label: 'Heavy Axle Load' },
+                    { value: '< 12 ms', label: 'Sync Telemetry' }
                   ].map((stat) => (
-                    <div key={stat.label} className="rounded-lg border border-white/5 bg-black/40 p-3">
-                      <div className="bg-gradient-to-r from-white to-purple-300 bg-clip-text text-lg font-bold text-transparent sm:text-xl">
+                    <div key={stat.label} className="rounded-lg border border-slate-100 bg-slate-50 p-2.5">
+                      <div className="text-base sm:text-lg font-black font-mono text-[#003366]">
                         {stat.value}
                       </div>
-                      <div className="mt-0.5 font-sans text-[10px] text-slate-400">{stat.label}</div>
+                      <div className="mt-0.5 font-sans text-[10px] text-slate-500 font-medium">{stat.label}</div>
                     </div>
                   ))}
                 </div>
               </div>
             </motion.div>
 
+            {/* Right Column: Authentication Card */}
             <motion.div
-              initial={{ opacity: 0, y: 30, scale: 0.98 }}
+              initial={{ opacity: 0, y: 20, scale: 0.98 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
-              transition={{ duration: 0.6, delay: 0.1 }}
+              transition={{ duration: 0.5, delay: 0.1 }}
               className="mx-auto w-full max-w-md lg:col-span-5"
             >
-              <div className="group relative overflow-hidden rounded-3xl border border-white/15 bg-slate-900/60 p-8 shadow-2xl shadow-purple-950/40 backdrop-blur-2xl">
-                <div className="absolute left-0 right-0 top-0 h-1 bg-gradient-to-r from-purple-500 via-blue-500 to-cyan-400" />
+              <div className="group relative overflow-hidden rounded-3xl border border-slate-200/90 bg-white p-7 shadow-xl">
+                <div className="absolute left-0 right-0 top-0 h-1.5 bg-gradient-to-r from-[#003366] via-blue-500 to-orange-500" />
 
-                <div className="mb-6 text-center">
-                  <div className="mb-3 inline-flex rounded-2xl border border-white/10 bg-gradient-to-tr from-purple-600/30 to-cyan-500/30 p-3 shadow-lg">
-                    <FaQrcode className="text-2xl text-cyan-400" />
+                <div className="mb-5 text-center">
+                  <div className="mb-2 inline-flex rounded-2xl border border-blue-200 bg-blue-50 p-3 shadow-sm">
+                    <FaTrain className="text-2xl text-blue-700" />
                   </div>
-                  <h2 className="text-2xl font-bold tracking-tight text-white">Welcome Back</h2>
-                  <p className="mt-1 text-xs text-slate-400">Sign in to continue managing railway infrastructure securely.</p>
+                  <h2 className="text-xl font-bold tracking-tight text-slate-900">Officer Authentication</h2>
+                  <p className="mt-1 text-xs text-slate-500">Sign in with your Indian Railways divisional email credentials.</p>
                 </div>
 
                 <AnimatePresence>
@@ -378,9 +275,9 @@ export default function Login() {
                       initial={{ opacity: 0, x: -10 }}
                       animate={{ opacity: 1, x: [0, -5, 5, -5, 0] }}
                       exit={{ opacity: 0 }}
-                      className="mb-4 flex items-center space-x-2 rounded-xl border border-red-500/30 bg-red-500/15 p-3 text-xs text-red-300"
+                      className="mb-4 flex items-center space-x-2 rounded-xl border border-red-200 bg-red-50 p-3 text-xs text-red-700 font-medium"
                     >
-                      <FaExclamationCircle className="shrink-0 text-sm text-red-400" />
+                      <FaExclamationCircle className="shrink-0 text-sm text-red-600" />
                       <span>{error}</span>
                     </motion.div>
                   )}
@@ -389,9 +286,9 @@ export default function Login() {
                       initial={{ opacity: 0, y: -10 }}
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0 }}
-                      className="mb-4 flex items-center space-x-2 rounded-xl border border-emerald-500/30 bg-emerald-500/15 p-3 text-xs text-emerald-300"
+                      className="mb-4 flex items-center space-x-2 rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-xs text-emerald-700 font-medium"
                     >
-                      <FaCheckCircle className="shrink-0 text-sm text-emerald-400" />
+                      <FaCheckCircle className="shrink-0 text-sm text-emerald-600" />
                       <span>{success}</span>
                     </motion.div>
                   )}
@@ -399,34 +296,34 @@ export default function Login() {
 
                 <form onSubmit={handleEmailLogin} className="space-y-4">
                   <div className="space-y-1">
-                    <label className="ml-1 text-xs font-medium text-slate-300">Email Address</label>
+                    <label className="ml-1 text-xs font-semibold text-slate-700">Divisional Officer Email</label>
                     <div className="relative flex items-center">
-                      <FaEnvelope className="pointer-events-none absolute left-4 text-xs text-slate-400" />
+                      <FaEnvelope className="pointer-events-none absolute left-3.5 text-xs text-slate-400" />
                       <input
                         type="email"
                         value={email}
                         onChange={(event) => setEmail(event.target.value)}
-                        placeholder="inspector@railways.gov.in"
-                        className="w-full rounded-xl border border-white/10 bg-black/40 py-3 pl-10 pr-4 text-xs text-white placeholder:text-slate-600 transition-all focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500"
+                        placeholder="e.g. salem@gmail.com / coimbatore@gmail.com"
+                        className="w-full rounded-xl border border-slate-300 bg-slate-50 py-3 pl-9 pr-4 text-xs text-slate-900 placeholder:text-slate-400 transition-all focus:bg-white focus:border-blue-600 focus:outline-none focus:ring-1 focus:ring-blue-600"
                       />
                     </div>
                   </div>
 
                   <div className="space-y-1">
-                    <label className="ml-1 text-xs font-medium text-slate-300">Password</label>
+                    <label className="ml-1 text-xs font-semibold text-slate-700">Password</label>
                     <div className="relative flex items-center">
-                      <FaKey className="pointer-events-none absolute left-4 text-xs text-slate-400" />
+                      <FaKey className="pointer-events-none absolute left-3.5 text-xs text-slate-400" />
                       <input
                         type={showPassword ? 'text' : 'password'}
                         value={password}
                         onChange={(event) => setPassword(event.target.value)}
                         placeholder="••••••••••••"
-                        className="w-full rounded-xl border border-white/10 bg-black/40 py-3 pl-10 pr-10 text-xs text-white placeholder:text-slate-600 transition-all focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500"
+                        className="w-full rounded-xl border border-slate-300 bg-slate-50 py-3 pl-9 pr-10 text-xs text-slate-900 placeholder:text-slate-400 transition-all focus:bg-white focus:border-blue-600 focus:outline-none focus:ring-1 focus:ring-blue-600"
                       />
                       <button
                         type="button"
                         onClick={() => setShowPassword((value) => !value)}
-                        className="absolute right-4 text-xs text-slate-400 transition-colors hover:text-white"
+                        className="absolute right-3.5 text-xs text-slate-400 transition-colors hover:text-slate-700 cursor-pointer"
                       >
                         {showPassword ? <FaEyeSlash /> : <FaEye />}
                       </button>
@@ -434,69 +331,64 @@ export default function Login() {
                   </div>
 
                   <div className="flex items-center justify-between pt-1 text-xs">
-                    <label className="flex cursor-pointer items-center space-x-2 text-slate-400">
+                    <label className="flex cursor-pointer items-center space-x-2 text-slate-600">
                       <input
                         type="checkbox"
                         checked={rememberMe}
                         onChange={(event) => setRememberMe(event.target.checked)}
-                        className="rounded border-white/20 bg-black/50 text-purple-600 focus:ring-0 focus:ring-offset-0"
+                        className="rounded border-slate-300 text-blue-600 focus:ring-0 focus:ring-offset-0"
                       />
-                      <span>Remember Me</span>
+                      <span>Keep Session Active</span>
                     </label>
-                    <a href="#forgot" className="text-purple-400 transition-colors hover:text-purple-300">
-                      Forgot Password?
-                    </a>
+                    <span className="text-slate-500 text-[11px] font-mono">Division Auto-Detect</span>
                   </div>
 
                   <button
                     type="submit"
                     disabled={loading}
-                    className="flex w-full items-center justify-center space-x-2 rounded-xl bg-gradient-to-r from-purple-600 via-blue-600 to-cyan-500 py-3.5 text-xs font-semibold text-white shadow-lg shadow-purple-600/30 transition-all hover:opacity-95 hover:shadow-cyan-500/40 active:scale-[0.99] disabled:opacity-50"
+                    className="flex w-full items-center justify-center space-x-2 rounded-xl bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-700 hover:to-amber-700 py-3 text-xs font-bold text-white shadow-lg shadow-orange-600/25 transition-all active:scale-[0.99] disabled:opacity-50 cursor-pointer"
                   >
                     {loading ? (
                       <>
                         <FaSpinner className="animate-spin text-sm" />
-                        <span>Authenticating...</span>
+                        <span>Verifying Credentials...</span>
                       </>
                     ) : (
                       <>
-                        <span>Sign In to System</span>
+                        <span>Sign In to Command Portal</span>
                         <FaArrowRight className="text-xs" />
                       </>
                     )}
                   </button>
                 </form>
 
-                <div className="mt-6 flex items-center justify-between border-t border-white/5 pt-4 text-[10px] text-slate-500">
-                  <div className="flex items-center space-x-1.5 text-emerald-400">
-                    <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400" />
-                    <span className="font-mono">256-BIT ENCRYPTED</span>
+                <div className="mt-5 flex items-center justify-between border-t border-slate-100 pt-3 text-[10px] text-slate-500">
+                  <div className="flex items-center space-x-1.5 text-emerald-600">
+                    <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-600" />
+                    <span className="font-mono font-semibold">SECURE ENCRYPTED CHANNEL</span>
                   </div>
-                  <span className="font-mono text-slate-600">v1.0.4-PROD</span>
-                </div>
-              </div>
-
-              <div className="mt-4 flex items-center justify-between rounded-2xl border border-white/10 bg-white/5 p-3 text-[11px] text-slate-400 backdrop-blur-md">
-                <span className="font-mono text-[10px] uppercase tracking-wider text-slate-500">Engine Tech:</span>
-                <div className="flex items-center space-x-2">
-                  <span className="rounded border border-white/10 bg-black/40 px-2 py-0.5 text-xs">AI</span>
-                  <span className="rounded border border-white/10 bg-black/40 px-2 py-0.5 text-xs">Firebase</span>
-                  <span className="rounded border border-white/10 bg-black/40 px-2 py-0.5 text-xs">XGBoost</span>
-                  <span className="rounded border border-white/10 bg-black/40 px-2 py-0.5 text-xs">QR</span>
+                  <span className="font-mono text-slate-400">v2.4-PROD</span>
                 </div>
               </div>
             </motion.div>
+
           </div>
         </main>
 
-        <footer className="w-full border-t border-white/10 bg-black/40 px-6 py-6 text-center text-xs text-slate-500 backdrop-blur-md">
-          <div className="mx-auto flex max-w-7xl items-center justify-center">
+        {/* Footer */}
+        <footer className="w-full border-t border-slate-200 bg-white px-6 py-4 text-center text-xs text-slate-600">
+          <div className="mx-auto flex max-w-7xl items-center justify-between flex-wrap gap-2 text-[11px]">
             <div>
-              <span className="font-medium text-slate-400">AI-Enabled Railway Track Clip Management System</span> - Smart Railway Infrastructure
+              <span className="font-semibold text-slate-900">RailClip AI System</span> • Dedicated Track Fastener Integrity Platform for Indian Railways
+            </div>
+            <div className="text-slate-500 font-mono">
+              RDSO Spec T-3701 / T-4001 • Broad Gauge 1676mm
             </div>
           </div>
         </footer>
+
       </div>
     </div>
   );
 }
+

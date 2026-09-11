@@ -337,48 +337,42 @@ async function lookupComponent(req, res) {
 async function createInspection(req, res) {
 	try {
 		const {
-			inspectionDate = new Date().toISOString().split('T')[0],
-			inspectorName = 'Officer K. Sharma',
-			inspectorId = 'IR-88204',
-			gpsLocation = '10.6733, 77.0834',
-			condition = 'Healthy',
-			severity = 'Low',
-			maintenancePerformed = false,
-			remarks = '',
-			batchNumber = 'BATCH001',
-			uClipId = 'C0001',
-			district = 'COIMBATORE',
-			divisionSection = 'D-1',
-			fixedBy = 'selva (RTCBE001)',
-			manufacturer = 'Jindal Steel',
-			purchaseDate = '2026-01-15',
-		} = req.body || {};
-
-		const health = condition === 'Healthy' ? 98 : condition === 'Loose' ? 75 : 40;
-		const status = condition === 'Healthy' ? 'Healthy' : condition === 'Loose' ? 'Warning' : 'Critical';
-
-		const newRecord = {
-			batchNumber,
-			uClipId,
-			district,
-			divisionSection,
-			fixedBy,
-			manufacturer,
-			purchaseDate,
-			date: `${inspectionDate} ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`,
 			inspectionDate,
-			inspector: inspectorName,
 			inspectorId,
-			gpsLocation,
 			condition,
 			severity,
-			health,
-			maintenance: maintenancePerformed ? 'Yes' : 'No',
-			maintenancePerformed: Boolean(maintenancePerformed),
-			status,
+			gpsLocation,
 			remarks,
+			district,
+			batchNumber,
+			uClipId,
+		} = req.body || {};
+
+		if (!inspectorId) {
+			return res.status(400).json({
+				success: false,
+				message: 'Inspector ID is required.',
+			});
+		}
+
+		const formattedDate = inspectionDate || new Date().toISOString().split('T')[0];
+		const cleanCondition = condition || 'Healthy';
+		const cleanSeverity = severity || 'Low';
+
+		const newRecord = {
+			inspectionDate: formattedDate,
+			inspectorId: String(inspectorId || '').trim(),
+			condition: cleanCondition,
+			severity: cleanSeverity,
+			gpsLocation: String(gpsLocation || '').trim(),
+			remarks: String(remarks || '').trim(),
+			district: String(district || '').toUpperCase().trim(),
+			date: `${formattedDate} ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`,
 			createdAt: new Date().toISOString(),
 		};
+
+		if (batchNumber && batchNumber !== 'N/A') newRecord.batchNumber = String(batchNumber).trim();
+		if (uClipId && uClipId !== 'N/A') newRecord.uClipId = String(uClipId).trim();
 
 		const docRef = await inspectionsCollection.add(newRecord);
 
@@ -400,11 +394,20 @@ async function createInspection(req, res) {
 
 async function listInspections(req, res) {
 	try {
-		const snapshot = await inspectionsCollection.orderBy('createdAt', 'desc').limit(50).get();
-		const data = snapshot.docs.map((doc) => ({
+		let snapshot;
+		try {
+			snapshot = await inspectionsCollection.orderBy('createdAt', 'desc').limit(100).get();
+		} catch (orderErr) {
+			console.warn('Fallback ordering for inspections:', orderErr.message);
+			snapshot = await inspectionsCollection.get();
+		}
+
+		let data = snapshot.docs.map((doc) => ({
 			id: doc.id,
 			...doc.data(),
 		}));
+
+		data.sort((a, b) => new Date(b.createdAt || b.date || 0) - new Date(a.createdAt || a.date || 0));
 
 		return res.json({
 			success: true,
