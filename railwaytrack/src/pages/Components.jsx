@@ -11,7 +11,8 @@ import {
   FaTrash, FaPrint, FaMapMarkerAlt, FaCogs, FaSignOutAlt, 
   FaFolder, FaMicrochip, FaExclamationTriangle, FaCheckCircle, 
   FaTools, FaCalendarAlt, FaBuilding, FaIndustry, FaCheck,
-  FaArrowRight, FaLayerGroup, FaHistory, FaInfoCircle, FaUserPlus, FaCamera, FaUpload
+  FaArrowRight, FaLayerGroup, FaHistory, FaInfoCircle, FaUserPlus, FaCamera, FaUpload,
+  FaTrain
 } from 'react-icons/fa';
 import { 
   ResponsiveContainer, PieChart, Pie, Cell, 
@@ -24,21 +25,10 @@ import {
    Identical to Dashboard.jsx background engine for visual consistency.
    ========================================================================== */
 function LiquidEther({
-  colors = ['#5227FF', '#FF9FFC', '#B497CF'],
-  mouseForce = 20,
-  cursorSize = 100,
-  isViscous = true,
-  viscous = 30,
-  iterationsViscous = 32,
-  iterationsPoisson = 32,
-  resolution = 0.5,
-  isBounce = false,
-  autoDemo = true,
-  autoSpeed = 0.5,
-  autoIntensity = 2.2,
-  color0 = '#5227FF',
-  color1 = '#FF9FFC',
-  color2 = '#B497CF'
+  autoSpeed = 0.4,
+  color0 = '#0284c7',
+  color1 = '#003366',
+  color2 = '#075985'
 }) {
   const canvasRef = useRef(null);
 
@@ -834,43 +824,36 @@ export default function Components() {
   const districtOfficer = getLoggedInDistrictOfficer();
 
   return (
-    <div className="relative h-screen bg-[#030712] text-white font-['Poppins',sans-serif] flex overflow-hidden selection:bg-purple-500 selection:text-white">
+    <div className="relative h-screen bg-slate-50 text-slate-900 font-['Poppins',sans-serif] flex overflow-hidden selection:bg-blue-600 selection:text-white">
       
-      {/* 1. WebGL Liquid Ether Background Engine */}
-      <LiquidEther
-        color0="#5227FF"
-        color1="#FF9FFC"
-        color2="#00D2FF"
-        autoSpeed={0.4}
-      />
-
-      {/* 2. Glow Orbs */}
-      <div className="fixed top-20 left-60 w-96 h-96 bg-purple-600/10 rounded-full filter blur-[150px] pointer-events-none z-0" />
-      <div className="fixed bottom-10 right-10 w-[30rem] h-[30rem] bg-cyan-500/10 rounded-full filter blur-[160px] pointer-events-none z-0" />
-
-      {/* 3. SIDEBAR NAVIGATION */}
+      {/* 1. SIDEBAR NAVIGATION */}
       <motion.aside
         initial={{ width: 260 }}
         animate={{ width: sidebarOpen ? 260 : 80 }}
         transition={{ duration: 0.3 }}
-        className="relative z-30 flex flex-col justify-between border-r border-white/10 bg-black/40 backdrop-blur-2xl min-h-screen shrink-0"
+        className="relative z-30 flex flex-col justify-between border-r border-blue-900/40 bg-[#002244] text-slate-200 min-h-screen shrink-0 shadow-lg"
       >
         <div>
-          <div className="flex items-center gap-3 p-5 border-b border-white/10">
+          <div className="flex items-center gap-3 p-4 border-b border-blue-900/60 bg-[#001b3a]">
             <div className="flex flex-1 items-center space-x-3 min-w-0 overflow-hidden cursor-pointer" onClick={() => navigate('/dashboard')}>
-              <div className="p-2.5 rounded-xl bg-gradient-to-tr from-purple-600 via-blue-600 to-cyan-400 text-white shrink-0 shadow-lg shadow-purple-500/20">
-                <FaQrcode className="text-xl" />
+              <div className="p-2 rounded-xl bg-gradient-to-tr from-[#003366] via-[#004b87] to-[#0284c7] text-amber-300 shrink-0 shadow-md shadow-blue-900/40">
+                <FaTrain className="text-lg" />
               </div>
               {sidebarOpen && (
                 <div className="flex flex-col whitespace-nowrap">
-                  <span className="font-bold text-base bg-gradient-to-r from-white to-purple-300 bg-clip-text text-transparent">
-                    RailClip<span className="text-cyan-400">AI</span>
+                  <span className="font-extrabold text-base text-white tracking-wide">
+                    RailClip<span className="text-blue-400">AI</span>
                   </span>
-                  <span className="text-[9px] text-slate-400 font-mono tracking-widest">ASSET MANAGEMENT</span>
+                  <span className="text-[9px] text-blue-200 font-mono tracking-widest font-semibold">
+                    IR COMMAND CENTER
+                  </span>
                 </div>
               )}
             </div>
-            <button onClick={() => setSidebarOpen(!sidebarOpen)} className="relative z-20 ml-auto flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-white/5 text-slate-300 transition-all hover:bg-white/10 hover:text-white">
+            <button 
+              onClick={() => setSidebarOpen(!sidebarOpen)} 
+              className="relative z-20 ml-auto flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-blue-800/60 bg-blue-900/30 text-blue-200 transition-all hover:bg-blue-800 hover:text-white cursor-pointer"
+            >
               <AnimatePresence mode="wait" initial={false}>
                 <motion.span
                   key={sidebarOpen ? 'close' : 'open'}
@@ -886,7 +869,7 @@ export default function Components() {
             </button>
           </div>
 
-          <nav className="p-4 space-y-2">
+          <nav className="p-3.5 space-y-1.5">
             {[
               { label: 'Dashboard', icon: FaChartLine, path: '/dashboard' },
               { label: 'Components', icon: FaQrcode, path: '/components' },
@@ -901,101 +884,120 @@ export default function Components() {
                 <button
                   key={item.label}
                   onClick={() => handleNavClick(item.label, item.path)}
-                  className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all font-medium text-xs cursor-pointer ${
+                  className={`w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-xl transition-all font-medium text-xs cursor-pointer ${
                     isActive 
-                      ? 'bg-gradient-to-r from-purple-600 to-blue-600 text-white shadow-lg shadow-purple-600/30' 
-                      : 'text-slate-400 hover:bg-white/5 hover:text-white'
+                      ? 'bg-gradient-to-r from-blue-600 to-[#0284c7] text-white border border-blue-400/40 shadow-md shadow-blue-950/30' 
+                      : 'text-blue-100/80 hover:bg-blue-900/40 hover:text-white'
                   }`}
                 >
-                  <Icon className={`text-base ${isActive ? 'text-white' : 'text-slate-400'}`} />
-                  {sidebarOpen && <span className="whitespace-nowrap">{item.label}</span>}
+                  <Icon className={`text-base ${isActive ? 'text-amber-300' : 'text-blue-300'}`} />
+                  {sidebarOpen && <span className="whitespace-nowrap font-semibold">{item.label}</span>}
                 </button>
               );
             })}
           </nav>
         </div>
 
-        <div className="p-4 border-t border-white/10">
-          <button onClick={() => navigate('/login')} className="w-full flex items-center space-x-3 px-4 py-2.5 rounded-xl text-red-400 hover:bg-red-500/10 text-xs font-medium transition-colors cursor-pointer">
+        <div className="p-4 border-t border-blue-900/60 bg-[#001b3a]">
+          <div className={`p-3 rounded-xl bg-blue-950/60 border border-blue-800/40 ${sidebarOpen ? 'block' : 'hidden'}`}>
+            <div className="flex items-center justify-between text-[11px] text-blue-200 mb-1">
+              <span className="font-medium">Master Batch Registry</span>
+              <span className="text-emerald-400 font-mono font-bold">ONLINE</span>
+            </div>
+            <div className="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
+              <div className="bg-gradient-to-r from-blue-400 to-cyan-400 h-full w-[100%]" />
+            </div>
+            <div className="mt-2 text-[10px] text-blue-300 font-mono">RDSO T-3701 Fastener Database</div>
+          </div>
+          <button 
+            onClick={() => navigate('/login')} 
+            className="w-full mt-3 flex items-center space-x-3 px-3 py-2 rounded-xl text-rose-300 hover:bg-rose-900/20 text-xs font-medium transition-colors cursor-pointer"
+          >
             <FaSignOutAlt className="text-sm" />
             {sidebarOpen && <span>Disconnect Session</span>}
           </button>
         </div>
       </motion.aside>
 
-      {/* 4. MAIN WORKSPACE */}
-      <div className="flex-1 flex flex-col z-20 min-w-0 overflow-y-auto scroll-smooth" style={{ scrollBehavior: 'smooth' }}>
+      {/* 2. MAIN WORKSPACE */}
+      <div className="flex-1 flex flex-col z-20 min-w-0 overflow-y-auto scroll-smooth bg-slate-50" style={{ scrollBehavior: 'smooth' }}>
+
+        {/* TOP INDIAN RAILWAYS BANNER STRIP */}
+        <div className="bg-[#002855] text-white text-[11px] sm:text-xs py-1.5 px-6 sm:px-8 border-b border-blue-900/60 flex items-center justify-between">
+          <div className="flex items-center space-x-2 sm:space-x-3">
+            <span className="font-bold tracking-wide text-amber-300">भारतीय रेल</span>
+            <span className="text-blue-300">|</span>
+            <span className="font-bold text-white">INDIAN RAILWAYS</span>
+            <span className="hidden md:inline text-blue-200 font-normal">• Ministry of Railways, Government of India</span>
+          </div>
+          <div className="flex items-center space-x-3 font-mono text-[10.5px] text-blue-200">
+            <span className="text-amber-300 font-semibold">{districtOfficer.subtitle}</span>
+            <span className="text-blue-400">|</span>
+            <span className="text-emerald-400">BROAD GAUGE 1676mm</span>
+          </div>
+        </div>
 
         {/* HEADER NAVBAR */}
-        <header className="sticky top-0 z-30 px-8 py-4 bg-black/40 backdrop-blur-xl border-b border-white/10 flex items-center justify-between">
+        <header className="sticky top-0 z-30 px-6 sm:px-8 py-3.5 bg-white/95 backdrop-blur-md border-b border-slate-200 flex items-center justify-between shadow-xs">
           <div>
-            <h1 className="text-lg font-bold text-white flex items-center gap-2">
-              Component Asset Management
-              <span className="px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 text-[10px] font-mono border border-cyan-500/30">
-                LASER QR MODULE
+            <h1 className="text-base sm:text-lg font-bold text-slate-900 flex items-center gap-2">
+              <span>ERC Fastener Registry</span>
+              <span className="px-2 py-0.5 rounded-full bg-blue-100 text-blue-800 text-[10px] font-mono font-bold border border-blue-200">
+                RDSO T-3701 / T-4001
               </span>
             </h1>
-            <p className="text-xs text-slate-400 font-light">Register, Monitor, and Manage Railway Track Clip Identities</p>
+            <p className="text-xs text-slate-500 font-normal">Register, Laser Serialise, and Manage Elastic Rail Clips across {districtOfficer.subtitle}</p>
           </div>
 
           <div className="flex items-center space-x-4">
-            <div className="relative hidden md:block">
-              <FaSearch className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500 text-xs" />
-              <input 
-                type="text" 
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search QR ID, Component ID..."
-                className="pl-9 pr-4 py-2 w-64 rounded-xl bg-black/50 border border-white/10 text-white placeholder:text-slate-600 text-xs focus:outline-none focus:border-purple-500 transition-all"
-              />
-            </div>
-
-            <button className="relative p-2.5 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 text-slate-300 transition-colors">
-              <FaBell className="text-sm" />
-              <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-purple-400 animate-ping" />
+            <button className="relative p-2.5 rounded-xl bg-slate-100 border border-slate-200 hover:bg-slate-200 text-slate-700 transition-colors cursor-pointer">
+              <FaBell className="text-sm text-slate-700" />
+              <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-amber-500 animate-ping" />
             </button>
 
-            <div className="hidden lg:flex items-center space-x-2 px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-xs font-mono text-slate-300">
-              <span className="w-2 h-2 rounded-full bg-emerald-400" />
+            <div className="hidden lg:flex items-center space-x-2 px-3 py-2 rounded-xl bg-slate-100 border border-slate-200 text-xs font-mono text-slate-700 font-semibold">
+              <span className="w-2 h-2 rounded-full bg-emerald-500" />
               <span>SYS TIME: {currentTime.toLocaleTimeString()}</span>
             </div>
 
-            <div className="flex items-center space-x-3 pl-3 border-l border-white/10">
-              <FaUserCircle className="text-2xl text-purple-400" />
+            <div className="flex items-center space-x-3 pl-3 border-l border-slate-200">
+              <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-[#003366] to-[#0284c7] text-white flex items-center justify-center font-bold text-xs shadow-sm">
+                <FaTrain className="text-amber-300" />
+              </div>
               <div className="hidden sm:flex flex-col text-left">
-                <span className="text-xs font-medium text-white leading-none">{districtOfficer.title}</span>
-                <span className="text-[10px] text-slate-400">{districtOfficer.subtitle}</span>
+                <span className="text-xs font-bold text-slate-900 leading-none">{districtOfficer.title}</span>
+                <span className="text-[10px] text-slate-500 font-medium mt-0.5">{districtOfficer.subtitle}</span>
               </div>
             </div>
           </div>
         </header>
 
         {/* WORKSPACE BODY */}
-        <main className="p-8 space-y-8 max-w-7xl w-full mx-auto">
+        <main className="p-6 sm:p-8 space-y-6 max-w-7xl w-full mx-auto">
 
           {/* 1. TOP STATS CARDS */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
             {[
-              { title: 'Total Registered', count: componentsList.length, trend: 'Active Database', icon: FaQrcode, color: 'from-blue-600 to-cyan-400' },
-              { title: 'Healthy Components', count: componentsList.filter(c => c.status === 'Active').length, trend: '98% Integrity', icon: FaCheckCircle, color: 'from-emerald-600 to-teal-400' },
-              { title: 'Under Maintenance', count: componentsList.filter(c => c.status === 'Maintenance').length, trend: 'In Progress', icon: FaTools, color: 'from-amber-600 to-yellow-400' },
-              { title: 'Components Replaced', count: componentsList.filter(c => c.status === 'Replaced').length, trend: 'Logged Failure', icon: FaExclamationTriangle, color: 'from-red-600 to-rose-400' },
-              { title: 'Inactive Assets', count: componentsList.filter(c => c.status === 'Inactive').length, trend: 'Offline', icon: FaInfoCircle, color: 'from-gray-600 to-slate-400' },
-              { title: 'Pending QR Sync', count: 0, trend: 'All Synced', icon: FaCloud, color: 'from-purple-600 to-indigo-400' },
+              { title: 'Total Registered', count: componentsList.length, trend: 'Active DB', icon: FaQrcode, color: 'from-[#003366] to-[#0284c7]' },
+              { title: 'Healthy Components', count: componentsList.filter(c => c.status === 'Active').length, trend: 'Optimal', icon: FaCheckCircle, color: 'from-emerald-700 to-emerald-500' },
+              { title: 'Under Maintenance', count: componentsList.filter(c => c.status === 'Maintenance').length, trend: 'In Progress', icon: FaTools, color: 'from-amber-600 to-orange-500' },
+              { title: 'Components Replaced', count: componentsList.filter(c => c.status === 'Replaced').length, trend: 'Logged', icon: FaExclamationTriangle, color: 'from-rose-700 to-red-500' },
+              { title: 'Inactive Assets', count: componentsList.filter(c => c.status === 'Inactive').length, trend: 'Offline', icon: FaInfoCircle, color: 'from-slate-600 to-slate-500' },
+              { title: 'Pending QR Sync', count: 0, trend: 'All Synced', icon: FaCloud, color: 'from-blue-700 to-indigo-600' },
             ].map((stat, idx) => {
               const Icon = stat.icon;
               return (
-                <div key={idx} className="p-5 rounded-2xl bg-slate-900/50 border border-white/10 backdrop-blur-xl hover:border-purple-500/40 transition-all">
+                <div key={idx} className="p-5 rounded-2xl bg-white border border-slate-200/90 shadow-sm hover:shadow-md transition-all">
                   <div className="flex items-center justify-between mb-3">
-                    <div className={`p-2.5 rounded-xl bg-gradient-to-tr ${stat.color} text-white shadow-md`}>
+                    <div className={`p-2.5 rounded-xl bg-gradient-to-tr ${stat.color} text-white shadow-sm`}>
                       <Icon className="text-base" />
                     </div>
-                    <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-white/10 text-slate-300">
+                    <span className="text-[10px] font-mono px-1.5 py-0.5 rounded font-bold bg-slate-100 text-slate-700 border border-slate-200">
                       {stat.trend}
                     </span>
                   </div>
-                  <div className="text-2xl font-bold text-white mb-1">{stat.count}</div>
-                  <div className="text-[11px] text-slate-400 truncate">{stat.title}</div>
+                  <div className="text-2xl font-black text-slate-900 tracking-tight mb-1 font-mono">{stat.count}</div>
+                  <div className="text-[11px] text-slate-500 font-medium truncate">{stat.title}</div>
                 </div>
               );
             })}
@@ -1004,23 +1006,23 @@ export default function Components() {
           {/* 2. REGISTRATION & QR GENERATION SECTION */}
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
             
-            {/* Component Registration Form (8 Cols) */}
-            <div className="lg:col-span-8 p-6 rounded-2xl bg-slate-900/50 border border-white/10 backdrop-blur-xl">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+            {/* Component Registration Form (12 Cols) */}
+            <div className="lg:col-span-12 p-6 rounded-2xl bg-white border border-slate-200/90 shadow-sm">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 pb-4 border-b border-slate-100">
                 <div>
-                  <h2 className="text-sm font-bold text-white flex items-center gap-2">
-                    <FaPlus className="text-cyan-400" />
-                    Register New Railway Track Clip
+                  <h2 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                    <FaPlus className="text-blue-600" />
+                    Register New Railway Track Clip Batch
                   </h2>
-                  <p className="text-[11px] text-slate-400">Initialize clip metadata before etching laser QR identity code</p>
+                  <p className="text-[11px] text-slate-500">Initialize clip batch metadata before etching laser QR identity code on field assets</p>
                 </div>
                 <div className="flex items-center gap-2">
                   <button 
                     type="button" 
                     onClick={handleOpenScanner} 
-                    className="px-3.5 py-2 rounded-xl bg-cyan-500/15 border border-cyan-400/30 text-cyan-300 text-xs font-semibold hover:bg-cyan-500/25 flex items-center gap-2 cursor-pointer transition-all shrink-0"
+                    className="px-4 py-2 rounded-xl bg-blue-50 border border-blue-200 text-blue-700 text-xs font-semibold hover:bg-blue-100 flex items-center gap-2 cursor-pointer transition-all shrink-0 shadow-xs"
                   >
-                    <FaCamera className="text-xs" />
+                    <FaCamera className="text-xs text-blue-600" />
                     <span>Scan / Upload Master QR</span>
                   </button>
                 </div>
@@ -1029,76 +1031,88 @@ export default function Components() {
               <form onSubmit={handleSaveComponent} className="space-y-4">
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   <div>
-                    <label className="text-[11px] text-slate-300 mb-1 block">{qrFieldHints.masterQrId} *</label>
+                    <label className="text-[11px] font-semibold text-slate-700 mb-1 block">{qrFieldHints.masterQrId} *</label>
                     <input 
                       type="text" 
                       name="masterQrId"
                       value={formData.masterQrId}
                       onChange={handleInputChange}
                       placeholder="e.g. RC0001"
-                      className="w-full px-3 py-2 rounded-xl bg-black/40 border border-white/10 text-white placeholder:text-slate-600 text-xs focus:outline-none focus:border-purple-500"
+                      className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-300 text-slate-900 placeholder:text-slate-400 text-xs focus:bg-white focus:border-blue-600 focus:outline-none transition-all"
                       required
                     />
                   </div>
 
                   <div>
-                    <label className="text-[11px] text-slate-300 mb-1 block">{qrFieldHints.childQrRange} *</label>
+                    <label className="text-[11px] font-semibold text-slate-700 mb-1 block">{qrFieldHints.childQrRange} *</label>
                     <input 
                       type="text" 
                       name="childQrRange"
                       value={formData.childQrRange}
                       onChange={handleInputChange}
                       placeholder="e.g. C0001-C0050"
-                      className="w-full px-3 py-2 rounded-xl bg-black/40 border border-white/10 text-white text-xs focus:outline-none focus:border-purple-500"
+                      className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-300 text-slate-900 placeholder:text-slate-400 text-xs focus:bg-white focus:border-blue-600 focus:outline-none transition-all"
                       required
                     />
                   </div>
 
                   <div>
-                    <label className="text-[11px] text-slate-300 mb-1 block">Derived Clip Count</label>
-                    <div className="w-full px-3 py-2 rounded-xl bg-black/20 border border-dashed border-cyan-500/30 text-cyan-300 text-xs font-semibold">
-                      {activeRangePreview ? `${activeRangePreview.clipsPurchased} clips` : 'Enter a valid range'}
+                    <label className="text-[11px] font-semibold text-slate-700 mb-1 block">Derived Clip Count</label>
+                    <div className="w-full px-3 py-2.5 rounded-xl bg-blue-50/70 border border-dashed border-blue-300 text-blue-800 text-xs font-bold font-mono flex items-center justify-between">
+                      <span>{activeRangePreview ? `${activeRangePreview.clipsPurchased} clips` : 'Enter a valid range'}</span>
+                      {activeRangePreview && <span className="text-[10px] text-blue-600 font-normal">RDSO Verified</span>}
                     </div>
                   </div>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="text-[11px] text-slate-300 mb-1 block">Purchased From *</label>
+                    <label className="text-[11px] font-semibold text-slate-700 mb-1 block">Purchased From (Manufacturer) *</label>
                     <input 
                       type="text" 
                       name="manufacturer"
                       value={formData.manufacturer}
                       onChange={handleInputChange}
-                      placeholder="e.g. Jindal Steel"
-                      className="w-full px-3 py-2 rounded-xl bg-black/40 border border-white/10 text-white text-xs focus:outline-none focus:border-purple-500"
+                      placeholder="e.g. Jindal Steel / SAIL RDSO Certified"
+                      className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-300 text-slate-900 placeholder:text-slate-400 text-xs focus:bg-white focus:border-blue-600 focus:outline-none transition-all"
                       required
                     />
                   </div>
 
                   <div>
-                    <label className="text-[11px] text-slate-300 mb-1 block">Date of Purchase *</label>
-                    <input type="date" name="purchaseDate" value={formData.purchaseDate} onChange={handleInputChange} className="w-full px-3 py-2 rounded-xl bg-black/40 border border-white/10 text-white text-xs" required />
+                    <label className="text-[11px] font-semibold text-slate-700 mb-1 block">Date of Purchase *</label>
+                    <input 
+                      type="date" 
+                      name="purchaseDate" 
+                      value={formData.purchaseDate} 
+                      onChange={handleInputChange} 
+                      className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-300 text-slate-900 text-xs focus:bg-white focus:border-blue-600 focus:outline-none transition-all" 
+                      required 
+                    />
                   </div>
                 </div>
 
-                <div className="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-[11px] text-slate-400">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50/80 px-4 py-3 text-[11px] text-slate-600">
                   <span>{scannerStatus}</span>
-                  <button type="button" onClick={handleFillFromManualQr} className="text-cyan-300 font-semibold hover:text-cyan-200">
+                  <button type="button" onClick={handleFillFromManualQr} className="text-blue-700 font-semibold hover:text-blue-900 cursor-pointer">
                     Autofill from pasted QR
                   </button>
                 </div>
 
-                <div className="flex items-center justify-between rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-[11px] text-slate-400">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between rounded-xl border border-slate-200 bg-slate-50/80 px-4 py-3 text-[11px] text-slate-600">
                   <span>{loadingBatches ? 'Syncing existing batches from the backend...' : 'Batch sync ready.'}</span>
-                  <span className="font-mono text-cyan-300">
+                  <span className="font-mono text-blue-700 font-semibold">
                     {activeRangePreview ? `${activeRangePreview.childQrStart} to ${activeRangePreview.childQrEnd}` : 'Awaiting QR range'}
                   </span>
                 </div>
 
-                <div className="flex justify-end space-x-3 pt-4 border-t border-white/5">
-                  <button type="submit" disabled={isSubmitting} className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-purple-600 via-blue-600 to-cyan-500 text-white text-xs font-semibold shadow-lg shadow-purple-600/30 hover:opacity-90 cursor-pointer disabled:cursor-not-allowed disabled:opacity-60">
-                    {isSubmitting ? 'Saving Batch...' : 'Save Batch to Firebase'}
+                <div className="flex justify-end space-x-3 pt-4 border-t border-slate-100">
+                  <button 
+                    type="submit" 
+                    disabled={isSubmitting} 
+                    className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-[#003366] to-[#0055a5] hover:from-[#002244] hover:to-[#004080] text-white text-xs font-semibold shadow-md shadow-blue-950/20 hover:opacity-95 cursor-pointer disabled:cursor-not-allowed disabled:opacity-60 transition-all"
+                  >
+                    {isSubmitting ? 'Saving Batch...' : 'Save Batch to Registry'}
                   </button>
                 </div>
               </form>
@@ -1108,48 +1122,48 @@ export default function Components() {
 
           <AnimatePresence>
             {isScannerOpen && (
-              <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4">
+              <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4">
                 <motion.div
                   initial={{ opacity: 0, scale: 0.95, y: 20 }}
                   animate={{ opacity: 1, scale: 1, y: 0 }}
                   exit={{ opacity: 0, scale: 0.95, y: 20 }}
-                  className="w-full max-w-lg rounded-3xl border border-white/10 bg-slate-950 p-5 shadow-2xl shadow-cyan-500/10"
+                  className="w-full max-w-lg rounded-3xl border border-slate-200 bg-white p-6 shadow-2xl text-slate-900"
                 >
-                  <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100">
                     <div>
-                      <h3 className="text-sm font-bold text-white">Upload Master QR</h3>
-                      <p className="text-[11px] text-slate-400">Upload a QR image to fill the batch fields automatically.</p>
+                      <h3 className="text-sm font-bold text-slate-900">Upload Master QR</h3>
+                      <p className="text-[11px] text-slate-500">Upload a QR image to fill the batch fields automatically.</p>
                     </div>
-                    <button type="button" onClick={closeScannerModal} className="text-slate-400 hover:text-white">
+                    <button type="button" onClick={closeScannerModal} className="text-slate-400 hover:text-slate-700 cursor-pointer">
                       <FaTimes />
                     </button>
                   </div>
 
-                  <div className="rounded-2xl border border-dashed border-cyan-500/30 bg-black/40 p-5 text-center">
-                    <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-cyan-500/15 text-cyan-300">
-                      <FaCloud />
+                  <div className="rounded-2xl border border-dashed border-blue-300 bg-blue-50/40 p-6 text-center">
+                    <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-blue-100 text-blue-700">
+                      <FaCloud className="text-xl" />
                     </div>
-                    <p className="text-sm font-medium text-white">Choose a QR image file</p>
-                    <p className="mt-1 text-[11px] text-slate-400">PNG, JPG, JPEG, or WEBP with a clear QR code.</p>
+                    <p className="text-sm font-semibold text-slate-800">Choose a QR image file</p>
+                    <p className="mt-1 text-[11px] text-slate-500">PNG, JPG, JPEG, or WEBP with a clear QR code.</p>
                     <input
                       type="file"
                       accept="image/*"
                       onChange={handleQrUpload}
-                      className="mt-4 block w-full cursor-pointer rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs text-slate-300 file:mr-4 file:rounded-lg file:border-0 file:bg-cyan-500 file:px-4 file:py-2 file:text-xs file:font-semibold file:text-white hover:file:bg-cyan-400"
+                      className="mt-4 block w-full cursor-pointer rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-700 file:mr-4 file:rounded-lg file:border-0 file:bg-blue-700 file:px-4 file:py-2 file:text-xs file:font-semibold file:text-white hover:file:bg-blue-800"
                     />
                     {qrPreviewSrc && (
                       <img
                         src={qrPreviewSrc}
                         alt="QR preview"
-                        className="mx-auto mt-4 max-h-56 rounded-2xl border border-white/10 object-contain"
+                        className="mx-auto mt-4 max-h-56 rounded-2xl border border-slate-200 object-contain shadow-sm"
                       />
                     )}
-                    {uploadedQrName && <p className="mt-3 text-[11px] text-cyan-300">Selected file: {uploadedQrName}</p>}
+                    {uploadedQrName && <p className="mt-3 text-[11px] text-blue-700 font-semibold">Selected file: {uploadedQrName}</p>}
                   </div>
 
-                  <div className="mt-4 flex items-center justify-between text-[11px] text-slate-400">
+                  <div className="mt-4 flex items-center justify-between text-[11px] text-slate-500">
                     <span>{scannerStatus}</span>
-                    <button type="button" onClick={closeScannerModal} className="rounded-xl bg-white/10 px-4 py-2 text-white hover:bg-white/15">
+                    <button type="button" onClick={closeScannerModal} className="rounded-xl bg-slate-100 hover:bg-slate-200 px-4 py-2 text-slate-700 font-semibold cursor-pointer">
                       Close Scanner
                     </button>
                   </div>
@@ -1159,18 +1173,18 @@ export default function Components() {
           </AnimatePresence>
 
           {/* 3. DATA TABLE & FILTERS SECTION */}
-          <div className="p-6 rounded-2xl bg-slate-900/50 border border-white/10 backdrop-blur-xl">
+          <div className="p-6 rounded-2xl bg-white border border-slate-200/90 shadow-sm">
             <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-6">
               <div>
-                <h3 className="text-sm font-bold text-white">Registered Railway Track Clips</h3>
-                <p className="text-[11px] text-slate-400">Complete digitized inventory logs synced with cloud database</p>
+                <h3 className="text-sm font-bold text-slate-900">Registered Railway Track Clips</h3>
+                <p className="text-[11px] text-slate-500">Complete digitized inventory logs synced with cloud database</p>
               </div>
 
               <div className="flex flex-wrap items-center gap-3">
                 <select 
                   value={statusFilter} 
                   onChange={(e) => setStatusFilter(e.target.value)}
-                  className="px-3 py-1.5 rounded-xl bg-black/40 border border-white/10 text-xs text-slate-300 focus:outline-none"
+                  className="px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-300 text-xs text-slate-700 focus:outline-none focus:border-blue-600"
                 >
                   <option value="All">All Statuses</option>
                   <option value="Active">Active</option>
@@ -1182,7 +1196,7 @@ export default function Components() {
                 <select 
                   value={zoneFilter} 
                   onChange={(e) => setZoneFilter(e.target.value)}
-                  className="px-3 py-1.5 rounded-xl bg-black/40 border border-white/10 text-xs text-slate-300 focus:outline-none"
+                  className="px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-300 text-xs text-slate-700 focus:outline-none focus:border-blue-600"
                 >
                   <option value="All">All Zones</option>
                   <option value="Southern">Southern</option>
@@ -1194,110 +1208,116 @@ export default function Components() {
             </div>
 
             {/* Table */}
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto rounded-xl border border-slate-200">
               <table className="w-full text-left text-xs">
-                <thead>
-                  <tr className="border-b border-white/10 text-slate-400 font-mono uppercase text-[10px] tracking-wider">
-                    <th className="pb-3 px-4">Master QR</th>
-                    <th className="pb-3 px-4">Batch Details</th>
-                    <th className="pb-3 px-4">Child QR Range</th>
-                    <th className="pb-3 px-4">Clips</th>
-                    <th className="pb-3 px-4">Purchase Date</th>
-                    <th className="pb-3 px-4">Status</th>
-                    <th className="pb-3 px-4 text-right">Actions</th>
+                <thead className="bg-slate-50 text-slate-600 font-mono uppercase text-[10px] tracking-wider border-b border-slate-200">
+                  <tr>
+                    <th className="py-3 px-4">Master QR</th>
+                    <th className="py-3 px-4">Batch Details</th>
+                    <th className="py-3 px-4">Child QR Range</th>
+                    <th className="py-3 px-4">Clips</th>
+                    <th className="py-3 px-4">Purchase Date</th>
+                    <th className="py-3 px-4">Status</th>
+                    <th className="py-3 px-4 text-right">Actions</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-white/5 text-slate-300">
-                  {filteredComponents.map((item) => (
-                    <tr key={item.id} className="hover:bg-white/5 transition-colors">
-                      <td className="py-3.5 px-4 font-mono text-cyan-400 font-semibold">{item.masterQrId || item.qrId}</td>
-                      <td className="py-3.5 px-4 font-medium text-white">{item.batchDetails || item.compId}</td>
-                      <td className="py-3.5 px-4">{item.childQrRange || `${item.section} (${item.station})`}</td>
-                      <td className="py-3.5 px-4 font-bold text-emerald-400">{item.clipsPurchased || 1}</td>
-                      <td className="py-3.5 px-4 font-mono text-slate-400">{item.purchaseDate || item.installDate}</td>
-                      <td className="py-3.5 px-4">
-                        <span className={`px-2 py-0.5 rounded text-[10px] font-semibold ${
-                          item.status === 'Active' ? 'bg-emerald-500/15 text-emerald-400' :
-                          item.status === 'Maintenance' ? 'bg-amber-500/15 text-amber-400' :
-                          item.status === 'Replaced' ? 'bg-red-500/15 text-red-400' : 'bg-gray-500/15 text-gray-400'
-                        }`}>
-                          {item.status}
-                        </span>
-                      </td>
-                      <td className="py-3.5 px-4 text-right space-x-2">
-                        <button onClick={() => { setSelectedComponent(item); setDrawerOpen(true); }} className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-cyan-400 cursor-pointer">
-                          <FaEye />
-                        </button>
-                        <button onClick={() => { setSelectedComponent(item); setEditModalOpen(true); }} className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-amber-400 cursor-pointer">
-                          <FaEdit />
-                        </button>
-                        <button onClick={() => { setSelectedComponent(item); setDeleteModalOpen(true); }} className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-red-400 cursor-pointer">
-                          <FaTrash />
-                        </button>
+                <tbody className="divide-y divide-slate-100 text-slate-700">
+                  {filteredComponents.length === 0 ? (
+                    <tr>
+                      <td colSpan={7} className="py-8 text-center text-slate-400">
+                        No component records found matching your filters.
                       </td>
                     </tr>
-                  ))}
+                  ) : (
+                    filteredComponents.map((item) => (
+                      <tr key={item.id} className="hover:bg-blue-50/40 transition-colors">
+                        <td className="py-3.5 px-4 font-mono text-blue-700 font-semibold">{item.masterQrId || item.qrId}</td>
+                        <td className="py-3.5 px-4 font-medium text-slate-900">{item.batchDetails || item.compId}</td>
+                        <td className="py-3.5 px-4">{item.childQrRange || `${item.section} (${item.station})`}</td>
+                        <td className="py-3.5 px-4 font-bold text-emerald-700">{item.clipsPurchased || 1}</td>
+                        <td className="py-3.5 px-4 font-mono text-slate-500">{item.purchaseDate || item.installDate}</td>
+                        <td className="py-3.5 px-4">
+                          <span className={`px-2 py-0.5 rounded text-[10px] font-semibold ${
+                            item.status === 'Active' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' :
+                            item.status === 'Maintenance' ? 'bg-amber-50 text-amber-700 border border-amber-200' :
+                            item.status === 'Replaced' ? 'bg-rose-50 text-rose-700 border border-rose-200' : 'bg-slate-100 text-slate-600 border border-slate-200'
+                          }`}>
+                            {item.status}
+                          </span>
+                        </td>
+                        <td className="py-3.5 px-4 text-right space-x-2">
+                          <button onClick={() => { setSelectedComponent(item); setDrawerOpen(true); }} className="p-1.5 rounded-lg bg-slate-100 hover:bg-blue-50 text-blue-700 border border-slate-200 cursor-pointer transition-all" title="View details">
+                            <FaEye />
+                          </button>
+                          <button onClick={() => { setSelectedComponent(item); setEditModalOpen(true); }} className="p-1.5 rounded-lg bg-slate-100 hover:bg-amber-50 text-amber-700 border border-slate-200 cursor-pointer transition-all" title="Edit">
+                            <FaEdit />
+                          </button>
+                          <button onClick={() => { setSelectedComponent(item); setDeleteModalOpen(true); }} className="p-1.5 rounded-lg bg-slate-100 hover:bg-rose-50 text-rose-700 border border-slate-200 cursor-pointer transition-all" title="Delete">
+                            <FaTrash />
+                          </button>
+                        </td>
+                      </tr>
+                    ))
+                  )}
                 </tbody>
               </table>
             </div>
           </div>
-
-
 
         </main>
 
         {/* 5. VIEW COMPONENT DRAWER */}
         <AnimatePresence>
           {drawerOpen && selectedComponent && (
-            <div className="fixed inset-0 z-50 flex justify-end bg-black/60 backdrop-blur-sm">
-              <motion.div initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }} className="w-full max-w-md bg-slate-900 border-l border-white/10 p-6 overflow-y-auto h-full space-y-6">
-                <div className="flex items-center justify-between border-b border-white/10 pb-4">
-                  <h3 className="text-sm font-bold text-white">Component Asset Details</h3>
-                  <button onClick={() => setDrawerOpen(false)} className="text-slate-400 hover:text-white cursor-pointer"><FaTimes /></button>
+            <div className="fixed inset-0 z-50 flex justify-end bg-slate-900/60 backdrop-blur-xs">
+              <motion.div initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }} className="w-full max-w-md bg-white border-l border-slate-200 p-6 overflow-y-auto h-full space-y-6 text-slate-900 shadow-2xl">
+                <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+                  <h3 className="text-sm font-bold text-slate-900">Component Asset Details</h3>
+                  <button onClick={() => setDrawerOpen(false)} className="text-slate-400 hover:text-slate-700 cursor-pointer"><FaTimes /></button>
                 </div>
 
                 <div className="space-y-4 text-xs">
-                  <div className="p-4 rounded-xl bg-white/5 border border-white/10 flex items-center space-x-4">
-                    <FaQrcode className="text-4xl text-cyan-400" />
+                  <div className="p-4 rounded-xl bg-blue-50/70 border border-blue-100 flex items-center space-x-4">
+                    <FaQrcode className="text-4xl text-blue-700" />
                     <div>
-                      <div className="font-mono text-white font-bold">{selectedComponent.masterQrId || selectedComponent.qrId}</div>
-                      <div className="text-slate-400">ID: {selectedComponent.batchDetails || selectedComponent.compId}</div>
+                      <div className="font-mono text-slate-900 font-bold text-sm">{selectedComponent.masterQrId || selectedComponent.qrId}</div>
+                      <div className="text-slate-500">ID: {selectedComponent.batchDetails || selectedComponent.compId}</div>
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-3 text-slate-300">
-                    <div className="p-3 rounded-lg bg-black/40">
-                      <span className="text-slate-500 text-[10px] block">Child QR Range</span>
-                      <span>{selectedComponent.childQrRange || `${selectedComponent.section}`}</span>
+                  <div className="grid grid-cols-2 gap-3 text-slate-700">
+                    <div className="p-3 rounded-lg bg-slate-50 border border-slate-200">
+                      <span className="text-slate-500 text-[10px] block font-semibold">Child QR Range</span>
+                      <span className="font-mono">{selectedComponent.childQrRange || `${selectedComponent.section}`}</span>
                     </div>
-                    <div className="p-3 rounded-lg bg-black/40">
-                      <span className="text-slate-500 text-[10px] block">Clip Count</span>
-                      <span>{selectedComponent.clipsPurchased || 1}</span>
+                    <div className="p-3 rounded-lg bg-slate-50 border border-slate-200">
+                      <span className="text-slate-500 text-[10px] block font-semibold">Clip Count</span>
+                      <span className="font-bold text-emerald-700">{selectedComponent.clipsPurchased || 1}</span>
                     </div>
-                    <div className="p-3 rounded-lg bg-black/40">
-                      <span className="text-slate-500 text-[10px] block">Zone & Division</span>
+                    <div className="p-3 rounded-lg bg-slate-50 border border-slate-200">
+                      <span className="text-slate-500 text-[10px] block font-semibold">Zone & Division</span>
                       <span>{selectedComponent.zone} - {selectedComponent.division}</span>
                     </div>
-                    <div className="p-3 rounded-lg bg-black/40">
-                      <span className="text-slate-500 text-[10px] block">Station</span>
+                    <div className="p-3 rounded-lg bg-slate-50 border border-slate-200">
+                      <span className="text-slate-500 text-[10px] block font-semibold">Station</span>
                       <span>{selectedComponent.station}</span>
                     </div>
-                    <div className="p-3 rounded-lg bg-black/40">
-                      <span className="text-slate-500 text-[10px] block">Manufacturer</span>
-                      <span>{selectedComponent.manufacturer}</span>
+                    <div className="p-3 rounded-lg bg-slate-50 border border-slate-200">
+                      <span className="text-slate-500 text-[10px] block font-semibold">Manufacturer</span>
+                      <span className="font-medium">{selectedComponent.manufacturer}</span>
                     </div>
-                    <div className="p-3 rounded-lg bg-black/40">
-                      <span className="text-slate-500 text-[10px] block">Installation Date</span>
-                      <span>{selectedComponent.purchaseDate || selectedComponent.installDate}</span>
+                    <div className="p-3 rounded-lg bg-slate-50 border border-slate-200">
+                      <span className="text-slate-500 text-[10px] block font-semibold">Installation Date</span>
+                      <span className="font-mono">{selectedComponent.purchaseDate || selectedComponent.installDate}</span>
                     </div>
-                    <div className="p-3 rounded-lg bg-black/40">
-                      <span className="text-slate-500 text-[10px] block">Purchased From</span>
+                    <div className="p-3 rounded-lg bg-slate-50 border border-slate-200 col-span-2">
+                      <span className="text-slate-500 text-[10px] block font-semibold">Purchased From</span>
                       <span>{selectedComponent.manufacturer}</span>
                     </div>
                   </div>
                 </div>
 
-                <button onClick={() => setDrawerOpen(false)} className="w-full py-2.5 rounded-xl bg-white/10 text-white text-xs font-semibold cursor-pointer">
+                <button onClick={() => setDrawerOpen(false)} className="w-full py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-semibold cursor-pointer transition-all">
                   Close Drawer
                 </button>
               </motion.div>
@@ -1308,20 +1328,20 @@ export default function Components() {
         {/* 6. EDIT COMPONENT MODAL */}
         <AnimatePresence>
           {editModalOpen && selectedComponent && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
-              <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} className="w-full max-w-md bg-slate-900 border border-white/15 p-6 rounded-2xl space-y-4">
-                <div className="flex items-center justify-between border-b border-white/10 pb-3">
-                  <h3 className="text-sm font-bold text-white">Edit Component ({selectedComponent.compId})</h3>
-                  <button onClick={() => setEditModalOpen(false)} className="text-slate-400 hover:text-white cursor-pointer"><FaTimes /></button>
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
+              <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} className="w-full max-w-md bg-white border border-slate-200 p-6 rounded-2xl space-y-4 shadow-xl text-slate-900">
+                <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                  <h3 className="text-sm font-bold text-slate-900">Edit Component ({selectedComponent.compId})</h3>
+                  <button onClick={() => setEditModalOpen(false)} className="text-slate-400 hover:text-slate-700 cursor-pointer"><FaTimes /></button>
                 </div>
 
                 <form onSubmit={handleEditSave} className="space-y-3 text-xs">
                   <div>
-                    <label className="text-slate-400 block mb-1">Status</label>
+                    <label className="text-slate-700 font-semibold block mb-1">Status</label>
                     <select 
                       value={selectedComponent.status} 
                       onChange={(e) => setSelectedComponent({ ...selectedComponent, status: e.target.value })}
-                      className="w-full px-3 py-2 rounded-xl bg-black/40 border border-white/10 text-white focus:outline-none"
+                      className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-300 text-slate-900 focus:bg-white focus:border-blue-600 focus:outline-none"
                     >
                       <option value="Active">Active</option>
                       <option value="Maintenance">Maintenance</option>
@@ -1331,28 +1351,28 @@ export default function Components() {
                   </div>
 
                   <div>
-                    <label className="text-slate-400 block mb-1">Track Section</label>
+                    <label className="text-slate-700 font-semibold block mb-1">Track Section</label>
                     <input 
                       type="text" 
                       value={selectedComponent.section} 
                       onChange={(e) => setSelectedComponent({ ...selectedComponent, section: e.target.value })}
-                      className="w-full px-3 py-2 rounded-xl bg-black/40 border border-white/10 text-white focus:outline-none"
+                      className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-300 text-slate-900 focus:bg-white focus:border-blue-600 focus:outline-none"
                     />
                   </div>
 
                   <div>
-                    <label className="text-slate-400 block mb-1">Station Name</label>
+                    <label className="text-slate-700 font-semibold block mb-1">Station Name</label>
                     <input 
                       type="text" 
                       value={selectedComponent.station} 
                       onChange={(e) => setSelectedComponent({ ...selectedComponent, station: e.target.value })}
-                      className="w-full px-3 py-2 rounded-xl bg-black/40 border border-white/10 text-white focus:outline-none"
+                      className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-300 text-slate-900 focus:bg-white focus:border-blue-600 focus:outline-none"
                     />
                   </div>
 
                   <div className="flex space-x-3 pt-3">
-                    <button type="button" onClick={() => setEditModalOpen(false)} className="flex-1 py-2 rounded-xl bg-white/10 text-white cursor-pointer">Cancel</button>
-                    <button type="submit" className="flex-1 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-semibold cursor-pointer">Save Changes</button>
+                    <button type="button" onClick={() => setEditModalOpen(false)} className="flex-1 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 cursor-pointer font-medium">Cancel</button>
+                    <button type="submit" className="flex-1 py-2 rounded-xl bg-blue-700 hover:bg-blue-800 text-white font-semibold cursor-pointer">Save Changes</button>
                   </div>
                 </form>
               </motion.div>
@@ -1363,14 +1383,14 @@ export default function Components() {
         {/* 7. DELETE CONFIRMATION MODAL */}
         <AnimatePresence>
           {deleteModalOpen && selectedComponent && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
-              <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} className="w-full max-w-sm bg-slate-900 border border-red-500/30 p-6 rounded-2xl space-y-4 text-center">
-                <FaExclamationTriangle className="text-4xl text-red-400 mx-auto" />
-                <h3 className="text-base font-bold text-white">Delete Railway Clip?</h3>
-                <p className="text-xs text-slate-400">Are you sure you want to permanently delete clip <strong className="text-white">{selectedComponent.compId}</strong> ({selectedComponent.qrId})?</p>
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
+              <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} className="w-full max-w-sm bg-white border border-rose-200 p-6 rounded-2xl space-y-4 text-center shadow-xl text-slate-900">
+                <FaExclamationTriangle className="text-4xl text-rose-600 mx-auto" />
+                <h3 className="text-base font-bold text-slate-900">Delete Railway Clip?</h3>
+                <p className="text-xs text-slate-500">Are you sure you want to permanently delete clip <strong className="text-slate-900">{selectedComponent.compId}</strong> ({selectedComponent.qrId})?</p>
                 <div className="flex space-x-3 pt-2">
-                  <button onClick={() => setDeleteModalOpen(false)} className="flex-1 py-2 rounded-xl bg-white/10 text-white text-xs cursor-pointer">Cancel</button>
-                  <button onClick={handleDeleteConfirm} className="flex-1 py-2 rounded-xl bg-red-600 hover:bg-red-500 text-white text-xs font-semibold cursor-pointer">Delete Permanent</button>
+                  <button onClick={() => setDeleteModalOpen(false)} className="flex-1 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs cursor-pointer font-medium">Cancel</button>
+                  <button onClick={handleDeleteConfirm} className="flex-1 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-semibold cursor-pointer">Delete Permanent</button>
                 </div>
               </motion.div>
             </div>
@@ -1378,9 +1398,9 @@ export default function Components() {
         </AnimatePresence>
 
         {/* FOOTER */}
-        <footer className="mt-auto py-6 px-8 border-t border-white/10 bg-black/40 backdrop-blur-md flex flex-col sm:flex-row items-center justify-between text-xs text-slate-500 gap-4">
-          <div>Database Status: <span className="font-mono text-emerald-400">Firebase Firestore Connected</span> | Total Components: <span className="font-mono text-slate-300">{componentsList.length}</span></div>
-          <div>Powered by React, Firebase & Laser QR Technology</div>
+        <footer className="mt-auto py-4 px-8 border-t border-slate-200 bg-white text-xs text-slate-500 flex flex-col sm:flex-row items-center justify-between gap-2">
+          <div>Database Status: <span className="font-mono text-emerald-700 font-bold">Firebase Firestore Connected</span> | Total Components: <span className="font-mono text-slate-800 font-semibold">{componentsList.length}</span></div>
+          <div>Indian Railways Track Telemetry Platform • RDSO Compliant</div>
         </footer>
 
       </div>

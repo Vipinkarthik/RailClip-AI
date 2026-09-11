@@ -12,7 +12,8 @@ import {
   FaFolder, FaMicrochip, FaExclamationTriangle, FaCheckCircle, 
   FaTools, FaCalendarAlt, FaBuilding, FaIndustry, FaCheck,
   FaArrowRight, FaLayerGroup, FaHistory, FaInfoCircle, FaCamera,
-  FaUpload, FaStop, FaCloudUploadAlt, FaSun, FaCloudRain, FaSmog, FaMoon, FaUserPlus
+  FaUpload, FaStop, FaCloudUploadAlt, FaSun, FaCloudRain, FaSmog, FaMoon, FaUserPlus,
+  FaTrain
 } from 'react-icons/fa';
 import { 
   ResponsiveContainer, PieChart, Pie, Cell, 
@@ -25,21 +26,10 @@ import {
    Identical to Dashboard.jsx background engine for visual consistency.
    ========================================================================== */
 function LiquidEther({
-  colors = ['#5227FF', '#FF9FFC', '#B497CF'],
-  mouseForce = 20,
-  cursorSize = 100,
-  isViscous = true,
-  viscous = 30,
-  iterationsViscous = 32,
-  iterationsPoisson = 32,
-  resolution = 0.5,
-  isBounce = false,
-  autoDemo = true,
-  autoSpeed = 0.5,
-  autoIntensity = 2.2,
-  color0 = '#5227FF',
-  color1 = '#FF9FFC',
-  color2 = '#B497CF'
+  autoSpeed = 0.4,
+  color0 = '#0284c7',
+  color1 = '#003366',
+  color2 = '#075985'
 }) {
   const canvasRef = useRef(null);
 
@@ -240,14 +230,6 @@ function parseChildQrText(rawText) {
   };
 }
 
-const mockInspectionRecords = [
-  { id: '1', date: '2026-07-20 11:42', inspector: 'Officer K. Sharma', condition: 'Healthy', severity: 'Low', health: 96, maintenance: 'No', status: 'Healthy', remarks: 'Fastener tension optimal. Zero micro-fractures.' },
-  { id: '2', date: '2026-07-10 14:15', inspector: 'Inspector R. Verma', condition: 'Loose', severity: 'Medium', health: 78, maintenance: 'Yes', status: 'Warning', remarks: 'Retightened clip housing assembly.' },
-  { id: '3', date: '2026-06-25 09:30', inspector: 'Eng. P. Deshmukh', condition: 'Worn', severity: 'Low', health: 84, maintenance: 'No', status: 'Healthy', remarks: 'Minor surface oxidation observed.' },
-  { id: '4', date: '2026-05-18 16:20', inspector: 'Inspector M. Khan', condition: 'Healthy', severity: 'Low', health: 91, maintenance: 'No', status: 'Healthy', remarks: 'Routine track audit cleared.' },
-  { id: '5', date: '2026-04-12 10:05', inspector: 'Officer K. Sharma', condition: 'Corroded', severity: 'Medium', health: 70, maintenance: 'Yes', status: 'Warning', remarks: 'Anti-corrosion coating re-applied.' },
-];
-
 const mockComponentTimeline = [
   { title: 'Component Registered', time: '2026-01-10', desc: 'Laser QR code C0001 etched at factory.' },
   { title: 'Installed on Track', time: '2026-01-15', desc: 'Anchored at D-1 Section, Coimbatore Track.' },
@@ -310,28 +292,44 @@ export default function Inspection() {
   const readerRef = useRef(null);
   const fileInputRef = useRef(null);
 
-  // Inspection Form State
+  // Inspection Form State (clean, without predefined samples)
   const [formState, setFormState] = useState({
     inspectionDate: new Date().toISOString().split('T')[0],
-    inspectorName: 'Officer K. Sharma',
-    inspectorId: 'IR-88204',
+    inspectorId: '',
     gpsLocation: '',
     condition: 'Healthy',
-    maintenancePerformed: false,
     severity: 'Low',
-    trackCondition: 'Good',
-    weather: 'Sunny',
-    remarks: 'Routine inspection completed. All clips securely fastened.'
+    remarks: ''
   });
 
-  // Table State
+  // Table State from database
   const [searchQuery, setSearchQuery] = useState('');
-  const [historyList, setHistoryList] = useState(mockInspectionRecords);
+  const [historyList, setHistoryList] = useState([]);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(false);
 
   // Notifications State
   const [notifications, setNotifications] = useState([
-    { id: 1, msg: 'Telemetry module initialized. Awaiting Child QR scan.', time: 'Just now' }
+    { id: 1, msg: 'Telemetry module initialized. Ready to log inspections.', time: 'Just now' }
   ]);
+
+  // Fetch inspection records from database
+  const fetchInspections = async () => {
+    setIsLoadingHistory(true);
+    try {
+      const res = await listInspectionRecords();
+      if (res?.success && Array.isArray(res.data)) {
+        setHistoryList(res.data);
+      }
+    } catch (err) {
+      console.error('Failed to load inspections from database:', err);
+    } finally {
+      setIsLoadingHistory(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchInspections();
+  }, []);
 
   // Real-time Clock
   useEffect(() => {
@@ -546,82 +544,88 @@ export default function Inspection() {
   const handleSaveInspection = async (e) => {
     e.preventDefault();
 
-    if (!activeComponent) {
-      alert('Please scan or upload a Child QR code first before saving an inspection.');
+    if (!formState.inspectorId.trim()) {
+      alert('Please enter a valid Inspector ID.');
       return;
     }
 
-    const newRecord = {
-      id: String(Date.now()),
-      date: `${formState.inspectionDate} ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`,
-      inspector: formState.inspectorName,
-      inspectorId: formState.inspectorId,
-      gpsLocation: formState.gpsLocation || activeComponent.gpsGeolocation || '',
+    const currentDistrict = (districtOfficer?.district || 'COIMBATORE').toUpperCase().trim();
+
+    const payload = {
+      inspectionDate: formState.inspectionDate,
+      inspectorId: formState.inspectorId.trim(),
       condition: formState.condition,
       severity: formState.severity,
-      health: formState.condition === 'Healthy' ? 98 : formState.condition === 'Loose' ? 75 : 40,
-      maintenance: formState.maintenancePerformed ? 'Yes' : 'No',
-      maintenancePerformed: formState.maintenancePerformed,
-      status: formState.condition === 'Healthy' ? 'Healthy' : formState.condition === 'Loose' ? 'Warning' : 'Critical',
-      remarks: formState.remarks,
-      batchNumber: activeComponent.batchNumber || 'N/A',
-      uClipId: activeComponent.uClipId || 'N/A',
-      district: activeComponent.district || 'N/A',
-      divisionSection: activeComponent.divisionSection || 'N/A',
-      fixedBy: activeComponent.fixedBy || 'N/A',
-      manufacturer: activeComponent.manufacturer || 'N/A',
-      purchaseDate: activeComponent.purchaseDate || 'N/A',
+      gpsLocation: formState.gpsLocation.trim() || activeComponent?.gpsGeolocation || '',
+      remarks: formState.remarks.trim(),
+      district: currentDistrict,
+      batchNumber: activeComponent?.batchNumber || '',
+      uClipId: activeComponent?.uClipId || '',
     };
 
     try {
-      await saveInspectionRecord(newRecord);
-    } catch (saveErr) {
-      console.warn('Backend save fallback:', saveErr);
-    }
+      const res = await saveInspectionRecord(payload);
+      const savedRecord = res?.data || {
+        id: String(Date.now()),
+        ...payload,
+        date: `${payload.inspectionDate} ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`,
+        createdAt: new Date().toISOString(),
+      };
 
-    setHistoryList([newRecord, ...historyList]);
-    setNotifications(prev => [{ id: Date.now(), msg: `Inspection logged for Clip ${activeComponent.uClipId || 'Component'}`, time: 'Just now' }, ...prev]);
-    alert(`Inspection successfully logged for Clip ${activeComponent.uClipId || 'N/A'} (${activeComponent.batchNumber || 'N/A'})!`);
+      setHistoryList((prev) => [savedRecord, ...prev]);
+      setNotifications((prev) => [
+        {
+          id: Date.now(),
+          msg: `Inspection logged in database for Inspector ${payload.inspectorId} (${payload.district})`,
+          time: 'Just now',
+        },
+        ...prev,
+      ]);
+
+      alert(`Inspection record successfully stored in database for district ${payload.district}!`);
+
+      // Reset remarks while retaining session inspector/date
+      setFormState((prev) => ({
+        ...prev,
+        remarks: '',
+      }));
+    } catch (saveErr) {
+      console.error('Backend save error:', saveErr);
+      alert('Unable to save inspection to database: ' + (saveErr?.response?.data?.message || saveErr.message || 'Server error'));
+    }
   };
 
   return (
-    <div className="relative h-screen bg-[#030712] text-white font-['Poppins',sans-serif] flex overflow-hidden selection:bg-purple-500 selection:text-white">
+    <div className="relative h-screen bg-slate-50 text-slate-900 font-['Poppins',sans-serif] flex overflow-hidden selection:bg-blue-600 selection:text-white">
       
-      {/* 1. WebGL Liquid Ether Background Engine */}
-      <LiquidEther
-        color0="#5227FF"
-        color1="#FF9FFC"
-        color2="#00D2FF"
-        autoSpeed={0.4}
-      />
-
-      {/* 2. Glow Orbs */}
-      <div className="fixed top-20 left-60 w-96 h-96 bg-purple-600/10 rounded-full filter blur-[150px] pointer-events-none z-0" />
-      <div className="fixed bottom-10 right-10 w-[30rem] h-[30rem] bg-cyan-500/10 rounded-full filter blur-[160px] pointer-events-none z-0" />
-
-      {/* 3. SIDEBAR NAVIGATION */}
+      {/* 1. SIDEBAR NAVIGATION */}
       <motion.aside
         initial={{ width: 260 }}
         animate={{ width: sidebarOpen ? 260 : 80 }}
         transition={{ duration: 0.3 }}
-        className="relative z-30 flex flex-col justify-between border-r border-white/10 bg-black/40 backdrop-blur-2xl min-h-screen shrink-0"
+        className="relative z-30 flex flex-col justify-between border-r border-blue-900/40 bg-[#002244] text-slate-200 min-h-screen shrink-0 shadow-lg"
       >
         <div>
-          <div className="flex items-center gap-3 p-5 border-b border-white/10">
+          <div className="flex items-center gap-3 p-4 border-b border-blue-900/60 bg-[#001b3a]">
             <div className="flex flex-1 items-center space-x-3 min-w-0 overflow-hidden cursor-pointer" onClick={() => navigate('/dashboard')}>
-              <div className="p-2.5 rounded-xl bg-gradient-to-tr from-purple-600 via-blue-600 to-cyan-400 text-white shrink-0 shadow-lg shadow-purple-500/20">
-                <FaQrcode className="text-xl" />
+              <div className="p-2 rounded-xl bg-gradient-to-tr from-[#003366] via-[#004b87] to-[#0284c7] text-amber-300 shrink-0 shadow-md shadow-blue-900/40">
+                <FaTrain className="text-lg" />
               </div>
               {sidebarOpen && (
                 <div className="flex flex-col whitespace-nowrap">
-                  <span className="font-bold text-base bg-gradient-to-r from-white to-purple-300 bg-clip-text text-transparent">
-                    RailClip<span className="text-cyan-400">AI</span>
+                  <span className="font-extrabold text-base text-white tracking-wide">
+                    RailClip<span className="text-blue-400">AI</span>
                   </span>
-                  <span className="text-[9px] text-slate-400 font-mono tracking-widest">FIELD INSPECTOR</span>
+                  <span className="text-[9px] text-blue-200 font-mono tracking-widest font-semibold">
+                    IR COMMAND CENTER
+                  </span>
                 </div>
               )}
             </div>
-            <button onClick={() => setSidebarOpen(!sidebarOpen)} className="relative z-20 ml-auto flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-white/5 text-slate-300 transition-all hover:bg-white/10 hover:text-white">
+            <button 
+              onClick={() => setSidebarOpen(!sidebarOpen)} 
+              className="relative z-20 ml-auto flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-blue-800/60 bg-blue-900/30 text-blue-200 transition-all hover:bg-blue-800 hover:text-white cursor-pointer"
+            >
               <AnimatePresence mode="wait" initial={false}>
                 <motion.span
                   key={sidebarOpen ? 'close' : 'open'}
@@ -637,7 +641,7 @@ export default function Inspection() {
             </button>
           </div>
 
-          <nav className="p-4 space-y-2">
+          <nav className="p-3.5 space-y-1.5">
             {[
               { label: 'Dashboard', icon: FaChartLine, path: '/dashboard' },
               { label: 'Components', icon: FaQrcode, path: '/components' },
@@ -652,95 +656,112 @@ export default function Inspection() {
                 <button
                   key={item.label}
                   onClick={() => handleNavClick(item.label, item.path)}
-                  className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all font-medium text-xs cursor-pointer ${
+                  className={`w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-xl transition-all font-medium text-xs cursor-pointer ${
                     isActive 
-                      ? 'bg-gradient-to-r from-purple-600 to-blue-600 text-white shadow-lg shadow-purple-600/30' 
-                      : 'text-slate-400 hover:bg-white/5 hover:text-white'
+                      ? 'bg-gradient-to-r from-blue-600 to-[#0284c7] text-white border border-blue-400/40 shadow-md shadow-blue-950/30' 
+                      : 'text-blue-100/80 hover:bg-blue-900/40 hover:text-white'
                   }`}
                 >
-                  <Icon className={`text-base ${isActive ? 'text-white' : 'text-slate-400'}`} />
-                  {sidebarOpen && <span className="whitespace-nowrap">{item.label}</span>}
+                  <Icon className={`text-base ${isActive ? 'text-amber-300' : 'text-blue-300'}`} />
+                  {sidebarOpen && <span className="whitespace-nowrap font-semibold">{item.label}</span>}
                 </button>
               );
             })}
           </nav>
         </div>
 
-        <div className="p-4 border-t border-white/10">
-          <button onClick={() => navigate('/login')} className="w-full flex items-center space-x-3 px-4 py-2.5 rounded-xl text-red-400 hover:bg-red-500/10 text-xs font-medium transition-colors cursor-pointer">
+        <div className="p-4 border-t border-blue-900/60 bg-[#001b3a]">
+          <div className={`p-3 rounded-xl bg-blue-950/60 border border-blue-800/40 ${sidebarOpen ? 'block' : 'hidden'}`}>
+            <div className="flex items-center justify-between text-[11px] text-blue-200 mb-1">
+              <span className="font-medium">P-Way Telemetry Sync</span>
+              <span className="text-emerald-400 font-mono font-bold">ONLINE</span>
+            </div>
+            <div className="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
+              <div className="bg-gradient-to-r from-blue-400 to-cyan-400 h-full w-[100%]" />
+            </div>
+            <div className="mt-2 text-[10px] text-blue-300 font-mono">Field Camera & QR Scanner</div>
+          </div>
+          <button 
+            onClick={() => navigate('/login')} 
+            className="w-full mt-3 flex items-center space-x-3 px-3 py-2 rounded-xl text-rose-300 hover:bg-rose-900/20 text-xs font-medium transition-colors cursor-pointer"
+          >
             <FaSignOutAlt className="text-sm" />
             {sidebarOpen && <span>Disconnect Session</span>}
           </button>
         </div>
       </motion.aside>
 
-      {/* 4. MAIN WORKSPACE */}
-      <div className="flex-1 flex flex-col z-20 min-w-0 overflow-y-auto scroll-smooth" style={{ scrollBehavior: 'smooth' }}>
+      {/* 2. MAIN WORKSPACE */}
+      <div className="flex-1 flex flex-col z-20 min-w-0 overflow-y-auto scroll-smooth bg-slate-50" style={{ scrollBehavior: 'smooth' }}>
+
+        {/* TOP INDIAN RAILWAYS BANNER STRIP */}
+        <div className="bg-[#002855] text-white text-[11px] sm:text-xs py-1.5 px-6 sm:px-8 border-b border-blue-900/60 flex items-center justify-between">
+          <div className="flex items-center space-x-2 sm:space-x-3">
+            <span className="font-bold tracking-wide text-amber-300">भारतीय रेल</span>
+            <span className="text-blue-300">|</span>
+            <span className="font-bold text-white">INDIAN RAILWAYS</span>
+            <span className="hidden md:inline text-blue-200 font-normal">• Ministry of Railways, Government of India</span>
+          </div>
+          <div className="flex items-center space-x-3 font-mono text-[10.5px] text-blue-200">
+            <span className="text-amber-300 font-semibold">{districtOfficer.subtitle}</span>
+            <span className="text-blue-400">|</span>
+            <span className="text-emerald-400">BROAD GAUGE 1676mm</span>
+          </div>
+        </div>
 
         {/* HEADER NAVBAR */}
-        <header className="sticky top-0 z-30 px-8 py-4 bg-black/40 backdrop-blur-xl border-b border-white/10 flex items-center justify-between">
+        <header className="sticky top-0 z-30 px-6 sm:px-8 py-3.5 bg-white/95 backdrop-blur-md border-b border-slate-200 flex items-center justify-between shadow-xs">
           <div>
-            <h1 className="text-lg font-bold text-white flex items-center gap-2">
-              QR Inspection & Maintenance
-              <span className="px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 text-[10px] font-mono border border-cyan-500/30">
-                FIELD TELEMETRY
+            <h1 className="text-base sm:text-lg font-bold text-slate-900 flex items-center gap-2">
+              <span>QR Field Inspection</span>
+              <span className="px-2 py-0.5 rounded-full bg-blue-100 text-blue-800 text-[10px] font-mono font-bold border border-blue-200">
+                P-WAY TELEMETRY
               </span>
             </h1>
-            <p className="text-xs text-slate-400 font-light">Scan Railway Track Clips and Update Inspection Records in Real Time</p>
+            <p className="text-xs text-slate-500 font-normal">Scan Elastic Rail Clips and Record Inspection Telemetry in Real Time across {districtOfficer.subtitle}</p>
           </div>
 
           <div className="flex items-center space-x-4">
-            <div className="relative hidden md:block">
-              <FaSearch className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500 text-xs" />
-              <input 
-                type="text" 
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search Inspection Logs..."
-                className="pl-9 pr-4 py-2 w-64 rounded-xl bg-black/50 border border-white/10 text-white placeholder:text-slate-600 text-xs focus:outline-none focus:border-purple-500 transition-all"
-              />
-            </div>
-
-            <button className="relative p-2.5 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 text-slate-300 transition-colors">
-              <FaBell className="text-sm" />
-              <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-cyan-400 animate-ping" />
+            <button className="relative p-2.5 rounded-xl bg-slate-100 border border-slate-200 hover:bg-slate-200 text-slate-700 transition-colors cursor-pointer">
+              <FaBell className="text-sm text-slate-700" />
+              <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-amber-500 animate-ping" />
             </button>
 
-            <div className="hidden lg:flex items-center space-x-2 px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-xs font-mono text-slate-300">
-              <span className="w-2 h-2 rounded-full bg-emerald-400" />
+            <div className="hidden lg:flex items-center space-x-2 px-3 py-2 rounded-xl bg-slate-100 border border-slate-200 text-xs font-mono text-slate-700 font-semibold">
+              <span className="w-2 h-2 rounded-full bg-emerald-500" />
               <span>SYS TIME: {currentTime.toLocaleTimeString()}</span>
             </div>
 
-            <div className="flex items-center space-x-3 pl-3 border-l border-white/10">
-              <FaUserCircle className="text-2xl text-purple-400" />
+            <div className="flex items-center space-x-3 pl-3 border-l border-slate-200">
+              <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-[#003366] to-[#0284c7] text-white flex items-center justify-center font-bold text-xs shadow-sm">
+                <FaTrain className="text-amber-300" />
+              </div>
               <div className="hidden sm:flex flex-col text-left">
-                <span className="text-xs font-medium text-white leading-none">{districtOfficer.title}</span>
-                <span className="text-[10px] text-slate-400">{districtOfficer.subtitle}</span>
+                <span className="text-xs font-bold text-slate-900 leading-none">{districtOfficer.title}</span>
+                <span className="text-[10px] text-slate-500 font-medium mt-0.5">{districtOfficer.subtitle}</span>
               </div>
             </div>
           </div>
         </header>
 
         {/* WORKSPACE BODY */}
-        <main className="p-8 space-y-8 max-w-7xl w-full mx-auto">
+        <main className="p-6 sm:p-8 space-y-6 max-w-7xl w-full mx-auto">
 
-
-
-          {/* 2. QR SCANNER & COMPONENT INFO ROW */}
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+          {/* 1. QR SCANNER & COMPONENT INFO ROW */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
             
             {/* QR Scanner Card (5 cols) */}
-            <div className="lg:col-span-5 p-6 rounded-2xl bg-slate-900/50 border border-white/10 backdrop-blur-xl flex flex-col justify-between">
+            <div className="lg:col-span-5 p-6 rounded-2xl bg-white border border-slate-200/90 shadow-sm flex flex-col justify-between">
               <div>
-                <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-sm font-bold text-white flex items-center gap-2">
-                    <FaQrcode className="text-cyan-400" />
+                <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100">
+                  <h2 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                    <FaQrcode className="text-blue-600" />
                     Scan Railway Clip Laser QR
                   </h2>
-                  <span className={`text-[10px] px-2 py-0.5 rounded font-mono ${
+                  <span className={`text-[10px] px-2 py-0.5 rounded font-mono font-bold ${
                     isCameraActive 
-                      ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 animate-pulse'
-                      : 'bg-purple-500/20 text-purple-300'
+                      ? 'bg-emerald-50 text-emerald-700 border border-emerald-300 animate-pulse'
+                      : 'bg-blue-50 text-blue-700 border border-blue-200'
                   }`}>
                     {isCameraActive ? 'LIVE CAMERA SCANNING' : 'SCANNER READY'}
                   </span>
@@ -756,7 +777,7 @@ export default function Inspection() {
                 />
 
                 {/* Camera View Finder / Video Box */}
-                <div className="relative w-full h-52 rounded-2xl bg-black/60 border border-white/10 flex flex-col items-center justify-center overflow-hidden mb-4">
+                <div className="relative w-full h-52 rounded-2xl bg-slate-900 border border-slate-200 flex flex-col items-center justify-center overflow-hidden mb-4 shadow-inner">
                   {/* Live Video Stream */}
                   <video 
                     ref={videoRef} 
@@ -768,7 +789,7 @@ export default function Inspection() {
 
                   {isCameraActive ? (
                     <div className="absolute inset-0 pointer-events-none flex flex-col items-center justify-center">
-                      <div className="w-36 h-36 border-2 border-cyan-400/80 rounded-xl relative animate-pulse">
+                      <div className="w-36 h-36 border-2 border-cyan-400 rounded-xl relative animate-pulse shadow-lg">
                         <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-transparent via-cyan-300 to-transparent animate-bounce" />
                       </div>
                       <span className="mt-2 text-[11px] text-cyan-300 font-mono bg-black/70 px-2.5 py-1 rounded-full border border-cyan-500/30">
@@ -777,22 +798,22 @@ export default function Inspection() {
                     </div>
                   ) : isScanning ? (
                     <div className="flex flex-col items-center space-y-3 z-10">
-                      <div className="w-12 h-12 border-4 border-cyan-400 border-t-transparent rounded-full animate-spin" />
-                      <span className="text-xs text-cyan-300 font-mono">Decoding Child QR...</span>
+                      <div className="w-10 h-10 border-3 border-cyan-400 border-t-transparent rounded-full animate-spin" />
+                      <span className="text-xs text-cyan-300 font-mono font-medium">Decoding Child QR...</span>
                     </div>
                   ) : scannedSuccess ? (
                     <div className="flex flex-col items-center space-y-2 z-10 px-4 text-center">
-                      <div className="w-14 h-14 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-2xl border border-emerald-500/40">
+                      <div className="w-12 h-12 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-xl border border-emerald-500/40">
                         <FaCheck />
                       </div>
                       <span className="text-xs text-emerald-400 font-mono font-bold">QR VERIFIED & RETRIEVED</span>
                       <span className="text-sm font-bold font-mono text-cyan-300">{activeComponent?.uClipId || manualQrInput}</span>
-                      <span className="text-[10px] text-slate-400">Batch: {activeComponent?.batchNumber || 'N/A'}</span>
+                      <span className="text-[10px] text-slate-300 font-medium">Batch: {activeComponent?.batchNumber || 'N/A'}</span>
                     </div>
                   ) : (
-                    <div className="flex flex-col items-center space-y-2 text-slate-500 z-10">
-                      <FaCamera className="text-4xl animate-pulse text-slate-400" />
-                      <span className="text-xs text-slate-400">Scan via camera or upload QR image file</span>
+                    <div className="flex flex-col items-center space-y-2 text-slate-400 z-10">
+                      <FaCamera className="text-3xl text-slate-400" />
+                      <span className="text-xs text-slate-300">Scan via camera or upload QR image file</span>
                     </div>
                   )}
 
@@ -804,8 +825,8 @@ export default function Inspection() {
                 </div>
 
                 {cameraError && (
-                  <div className="mb-3 p-2.5 rounded-xl bg-red-500/15 border border-red-500/30 text-red-300 text-xs flex items-center gap-2">
-                    <FaExclamationTriangle className="text-red-400 shrink-0" />
+                  <div className="mb-3 p-2.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-center gap-2 font-medium">
+                    <FaExclamationTriangle className="text-rose-600 shrink-0" />
                     <span>{cameraError}</span>
                   </div>
                 )}
@@ -813,7 +834,7 @@ export default function Inspection() {
                 {/* Manual Input */}
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <label className="text-[11px] text-slate-400 block">Or enter QR code / Clip ID</label>
+                    <label className="text-[11px] font-semibold text-slate-700 block">Or enter QR code / Clip ID</label>
                     <span className="text-[10px] font-mono text-slate-500">{scannerStatus}</span>
                   </div>
                   <div className="flex space-x-2">
@@ -822,9 +843,12 @@ export default function Inspection() {
                       value={manualQrInput}
                       onChange={(e) => setManualQrInput(e.target.value)}
                       placeholder="e.g. C0001 or BATCH001"
-                      className="flex-1 px-3 py-2 rounded-xl bg-black/40 border border-white/10 text-cyan-400 font-mono text-xs focus:outline-none focus:border-cyan-500"
+                      className="flex-1 px-3 py-2 rounded-xl bg-slate-50 border border-slate-300 text-slate-900 font-mono text-xs focus:bg-white focus:border-blue-600 focus:outline-none transition-all"
                     />
-                    <button onClick={handleTriggerScan} className="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-semibold shrink-0 cursor-pointer">
+                    <button 
+                      onClick={handleTriggerScan} 
+                      className="px-4 py-2 rounded-xl bg-blue-700 hover:bg-blue-800 text-white text-xs font-semibold shrink-0 cursor-pointer shadow-xs transition-all"
+                    >
                       Query
                     </button>
                   </div>
@@ -832,12 +856,12 @@ export default function Inspection() {
               </div>
 
               {/* Action Buttons: Scan + Upload */}
-              <div className="grid grid-cols-2 gap-3 mt-4 pt-4 border-t border-white/5">
+              <div className="grid grid-cols-2 gap-3 mt-4 pt-4 border-t border-slate-100">
                 {isCameraActive ? (
                   <button 
                     type="button" 
                     onClick={stopCamera} 
-                    className="py-2.5 px-3 rounded-xl bg-red-500/20 border border-red-500/40 text-red-300 text-xs font-semibold flex items-center justify-center space-x-2 hover:bg-red-500/30 cursor-pointer transition-all"
+                    className="py-2.5 px-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold flex items-center justify-center space-x-2 hover:bg-rose-100 cursor-pointer transition-all"
                   >
                     <FaStop />
                     <span>Stop Camera</span>
@@ -846,7 +870,7 @@ export default function Inspection() {
                   <button 
                     type="button" 
                     onClick={startCamera} 
-                    className="py-2.5 px-3 rounded-xl bg-gradient-to-r from-purple-600 to-blue-600 text-white text-xs font-semibold flex items-center justify-center space-x-2 hover:opacity-95 cursor-pointer shadow-lg shadow-purple-600/30 transition-all"
+                    className="py-2.5 px-3 rounded-xl bg-gradient-to-r from-[#003366] to-[#0055a5] hover:from-[#002244] hover:to-[#004080] text-white text-xs font-semibold flex items-center justify-center space-x-2 hover:opacity-95 cursor-pointer shadow-sm transition-all"
                   >
                     <FaCamera />
                     <span>Start Camera</span>
@@ -856,7 +880,7 @@ export default function Inspection() {
                 <button 
                   type="button" 
                   onClick={handleUploadQrClick} 
-                  className="py-2.5 px-3 rounded-xl bg-cyan-500/15 border border-cyan-400/30 text-cyan-300 text-xs font-semibold flex items-center justify-center space-x-2 hover:bg-cyan-500/25 cursor-pointer transition-all"
+                  className="py-2.5 px-3 rounded-xl bg-blue-50 border border-blue-200 text-blue-700 text-xs font-semibold flex items-center justify-center space-x-2 hover:bg-blue-100 cursor-pointer transition-all shadow-xs"
                 >
                   <FaUpload />
                   <span>Upload QR Image</span>
@@ -865,105 +889,105 @@ export default function Inspection() {
             </div>
 
             {/* Component Information Card (7 cols) */}
-            <div className="lg:col-span-7 p-6 rounded-2xl bg-slate-900/50 border border-white/10 backdrop-blur-xl flex flex-col justify-between">
+            <div className="lg:col-span-7 p-6 rounded-2xl bg-white border border-slate-200/90 shadow-sm flex flex-col justify-between">
               {!activeComponent ? (
                 <div className="flex-1 flex flex-col items-center justify-center text-center p-8 space-y-4 my-auto">
-                  <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-purple-600/20 to-cyan-500/20 border border-purple-500/30 text-cyan-300 flex items-center justify-center text-3xl shadow-lg">
+                  <div className="w-16 h-16 rounded-2xl bg-blue-50 border border-blue-200 text-blue-700 flex items-center justify-center text-3xl shadow-xs">
                     <FaQrcode />
                   </div>
                   <div className="max-w-md space-y-1">
-                    <h3 className="text-base font-bold text-white">Awaiting Child QR Scan or Upload</h3>
-                    <p className="text-xs text-slate-400 leading-relaxed">
-                      Start the camera or click <span className="text-cyan-300 font-semibold">Upload QR Image</span> to decode the Child QR code. Telemetry data, employee details, and the registered <span className="text-amber-300 font-semibold">Manufacturer</span> from the master batch will be displayed automatically.
+                    <h3 className="text-base font-bold text-slate-900">Awaiting Child QR Scan or Upload</h3>
+                    <p className="text-xs text-slate-500 leading-relaxed">
+                      Start the camera or click <span className="text-blue-700 font-semibold">Upload QR Image</span> to decode the Child QR code. Telemetry data, employee details, and the registered <span className="text-amber-700 font-semibold">Manufacturer</span> from the master batch will be displayed automatically.
                     </p>
                   </div>
-                  <div className="flex items-center gap-2 text-[11px] font-mono text-slate-400 bg-black/40 px-3.5 py-1.5 rounded-full border border-white/5">
-                    <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse" />
-                    <span>No dummy data &bull; Waiting for Child QR input</span>
+                  <div className="flex items-center gap-2 text-[11px] font-mono text-slate-600 bg-slate-50 px-3.5 py-1.5 rounded-full border border-slate-200">
+                    <span className="w-2 h-2 rounded-full bg-blue-600 animate-pulse" />
+                    <span>Waiting for Child QR input</span>
                   </div>
                 </div>
               ) : (
                 <div>
-                  <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100">
                     <div>
-                      <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                      <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
                         Retrieved Clip Profile
-                        <span className="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 text-[10px] font-mono border border-emerald-500/30">
+                        <span className="px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 text-[10px] font-mono font-bold border border-emerald-200">
                           {activeComponent.status || 'Active'}
                         </span>
                       </h3>
-                      <p className="text-[11px] text-slate-400">Decoded from Child QR & Firestore Master Batch Registry</p>
+                      <p className="text-[11px] text-slate-500">Decoded from Child QR & Firestore Master Batch Registry</p>
                     </div>
                     <div className="text-right">
-                      <div className="text-xl font-bold text-cyan-400 font-mono">{activeComponent.uClipId || 'N/A'}</div>
-                      <div className="text-[10px] font-mono text-purple-300">Master Batch: {activeComponent.batchNumber || 'N/A'}</div>
+                      <div className="text-xl font-bold text-blue-700 font-mono">{activeComponent.uClipId || 'N/A'}</div>
+                      <div className="text-[10px] font-mono text-slate-500">Master Batch: {activeComponent.batchNumber || 'N/A'}</div>
                     </div>
                   </div>
 
                   {/* 8-Grid of Details: Batch, uClip ID, District, Section, Fixed By, GPS, Manufacturer, Purchase Date */}
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-xs">
-                    <div className="p-2.5 rounded-xl bg-black/40 border border-white/5">
-                      <span className="text-slate-500 text-[10px] uppercase font-mono block">Batch Number</span>
-                      <span className="font-semibold font-mono text-cyan-300">{activeComponent.batchNumber || 'N/A'}</span>
+                    <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200">
+                      <span className="text-slate-500 text-[10px] uppercase font-mono font-semibold block">Batch Number</span>
+                      <span className="font-semibold font-mono text-blue-700">{activeComponent.batchNumber || 'N/A'}</span>
                     </div>
 
-                    <div className="p-2.5 rounded-xl bg-black/40 border border-white/5">
-                      <span className="text-slate-500 text-[10px] uppercase font-mono block">uClip ID</span>
-                      <span className="font-semibold font-mono text-emerald-400">{activeComponent.uClipId || 'N/A'}</span>
+                    <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200">
+                      <span className="text-slate-500 text-[10px] uppercase font-mono font-semibold block">uClip ID</span>
+                      <span className="font-semibold font-mono text-emerald-700">{activeComponent.uClipId || 'N/A'}</span>
                     </div>
 
-                    <div className="p-2.5 rounded-xl bg-black/40 border border-white/5">
-                      <span className="text-slate-500 text-[10px] uppercase font-mono block">District</span>
-                      <span className="font-semibold text-white">{activeComponent.district || 'N/A'}</span>
+                    <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200">
+                      <span className="text-slate-500 text-[10px] uppercase font-mono font-semibold block">District</span>
+                      <span className="font-semibold text-slate-900">{activeComponent.district || 'N/A'}</span>
                     </div>
 
-                    <div className="p-2.5 rounded-xl bg-black/40 border border-white/5">
-                      <span className="text-slate-500 text-[10px] uppercase font-mono block">Division / Section</span>
-                      <span className="font-semibold text-white">{activeComponent.divisionSection || activeComponent.section || 'N/A'}</span>
+                    <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200">
+                      <span className="text-slate-500 text-[10px] uppercase font-mono font-semibold block">Division / Section</span>
+                      <span className="font-semibold text-slate-900">{activeComponent.divisionSection || activeComponent.section || 'N/A'}</span>
                     </div>
 
-                    <div className="p-2.5 rounded-xl bg-black/40 border border-white/5">
-                      <span className="text-slate-500 text-[10px] uppercase font-mono block">Fixed By (Employee)</span>
-                      <span className="font-semibold text-purple-300">{activeComponent.fixedBy || 'N/A'}</span>
+                    <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200">
+                      <span className="text-slate-500 text-[10px] uppercase font-mono font-semibold block">Fixed By (Employee)</span>
+                      <span className="font-semibold text-slate-800">{activeComponent.fixedBy || 'N/A'}</span>
                     </div>
 
-                    <div className="p-2.5 rounded-xl bg-black/40 border border-white/5">
-                      <span className="text-slate-500 text-[10px] uppercase font-mono block">GPS Geolocation</span>
-                      <span className="font-mono text-cyan-300 text-[11px] truncate block" title={activeComponent.gpsGeolocation || 'N/A'}>
+                    <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200">
+                      <span className="text-slate-500 text-[10px] uppercase font-mono font-semibold block">GPS Geolocation</span>
+                      <span className="font-mono text-blue-700 text-[11px] truncate block" title={activeComponent.gpsGeolocation || 'N/A'}>
                         {activeComponent.gpsGeolocation || 'N/A'}
                       </span>
                     </div>
 
-                    <div className="p-2.5 rounded-xl bg-black/40 border border-amber-500/20 bg-amber-500/5">
-                      <span className="text-amber-400 text-[10px] uppercase font-mono block font-bold">Purchased From (Manufacturer)</span>
-                      <span className="font-bold text-amber-300">{activeComponent.manufacturer || 'N/A'}</span>
+                    <div className="p-2.5 rounded-xl bg-amber-50/80 border border-amber-200">
+                      <span className="text-amber-800 text-[10px] uppercase font-mono block font-bold">Purchased From</span>
+                      <span className="font-bold text-amber-900">{activeComponent.manufacturer || 'N/A'}</span>
                     </div>
 
-                    <div className="p-2.5 rounded-xl bg-black/40 border border-white/5">
-                      <span className="text-slate-500 text-[10px] uppercase font-mono block">Date of Purchase</span>
-                      <span className="font-mono text-slate-300">{activeComponent.purchaseDate || 'N/A'}</span>
+                    <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200">
+                      <span className="text-slate-500 text-[10px] uppercase font-mono font-semibold block">Date of Purchase</span>
+                      <span className="font-mono text-slate-700">{activeComponent.purchaseDate || 'N/A'}</span>
                     </div>
                   </div>
 
                   {/* Telemetry Status Summary Cards */}
                   <div className="grid grid-cols-3 gap-3 mt-3 text-xs">
-                    <div className="p-3 rounded-xl bg-purple-900/20 border border-purple-500/20 text-center">
-                      <span className="text-slate-400 text-[10px] block">Total Inspections</span>
-                      <span className="text-lg font-bold text-purple-300">{activeComponent.inspectionCount ?? 0}</span>
+                    <div className="p-3 rounded-xl bg-blue-50/70 border border-blue-100 text-center">
+                      <span className="text-slate-500 text-[10px] block font-medium">Total Inspections</span>
+                      <span className="text-lg font-bold text-blue-800">{activeComponent.inspectionCount ?? 0}</span>
                     </div>
-                    <div className="p-3 rounded-xl bg-blue-900/20 border border-blue-500/20 text-center">
-                      <span className="text-slate-400 text-[10px] block">Current Health</span>
-                      <span className="text-lg font-bold text-emerald-400">{activeComponent.health ?? 100}/100</span>
+                    <div className="p-3 rounded-xl bg-emerald-50/70 border border-emerald-100 text-center">
+                      <span className="text-slate-500 text-[10px] block font-medium">Current Health</span>
+                      <span className="text-lg font-bold text-emerald-700">{activeComponent.health ?? 100}/100</span>
                     </div>
-                    <div className="p-3 rounded-xl bg-cyan-900/20 border border-cyan-500/20 text-center">
-                      <span className="text-slate-400 text-[10px] block">AI Priority</span>
-                      <span className="text-lg font-bold text-cyan-400">{activeComponent.priority || 'Low'}</span>
+                    <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-center">
+                      <span className="text-slate-500 text-[10px] block font-medium">AI Priority</span>
+                      <span className="text-lg font-bold text-slate-800">{activeComponent.priority || 'Low'}</span>
                     </div>
                   </div>
 
-                  <div className="mt-4 pt-3 border-t border-white/5 flex items-center justify-between text-[11px] text-slate-400">
-                    <span>Last Inspected: <strong className="text-white">{activeComponent.lastInspectionDate || new Date().toISOString().split('T')[0]}</strong></span>
-                    <span>Track Spec: <strong className="text-slate-300">{activeComponent.trackType || 'Broad Gauge (1676 mm)'}</strong></span>
+                  <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-500">
+                    <span>Last Inspected: <strong className="text-slate-900">{activeComponent.lastInspectionDate || new Date().toISOString().split('T')[0]}</strong></span>
+                    <span>Track Spec: <strong className="text-slate-700">{activeComponent.trackType || 'Broad Gauge (1676 mm)'}</strong></span>
                   </div>
                 </div>
               )}
@@ -971,14 +995,224 @@ export default function Inspection() {
 
           </div>
 
+          {/* 2. INSPECTION LOG FORM & DATA TABLE */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            
+            {/* Form to submit inspection (5 cols) */}
+            <div className="lg:col-span-5 p-6 rounded-2xl bg-white border border-slate-200/90 shadow-sm">
+              <div className="mb-4 pb-3 border-b border-slate-100">
+                <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                  <FaTools className="text-blue-600" />
+                  Log Field Inspection
+                </h3>
+                <p className="text-[11px] text-slate-500">Record on-track physical condition & torque assessment</p>
+              </div>
 
+              <form onSubmit={handleSaveInspection} className="space-y-3 text-xs">
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-slate-700 font-semibold block mb-1">Inspection Date *</label>
+                    <input 
+                      type="date" 
+                      name="inspectionDate" 
+                      value={formState.inspectionDate} 
+                      onChange={handleInputChange} 
+                      className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-300 text-slate-900 text-xs focus:bg-white focus:border-blue-600 focus:outline-none" 
+                      required 
+                    />
+                  </div>
+                  <div>
+                    <label className="text-slate-700 font-semibold block mb-1">Inspector ID *</label>
+                    <input 
+                      type="text" 
+                      name="inspectorId" 
+                      value={formState.inspectorId} 
+                      onChange={handleInputChange} 
+                      className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-300 text-slate-900 text-xs focus:bg-white focus:border-blue-600 focus:outline-none" 
+                      required 
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-slate-700 font-semibold block mb-1">Clip Condition *</label>
+                    <select 
+                      name="condition" 
+                      value={formState.condition} 
+                      onChange={handleInputChange} 
+                      className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-300 text-slate-900 text-xs focus:bg-white focus:border-blue-600 focus:outline-none"
+                    >
+                      <option value="Healthy">Healthy (Optimal)</option>
+                      <option value="Loose">Loose Fastener</option>
+                      <option value="Worn">Surface Worn</option>
+                      <option value="Corroded">Corroded</option>
+                      <option value="Fractured">Fractured / Broken</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-slate-700 font-semibold block mb-1">Severity Rating</label>
+                    <select 
+                      name="severity" 
+                      value={formState.severity} 
+                      onChange={handleInputChange} 
+                      className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-300 text-slate-900 text-xs focus:bg-white focus:border-blue-600 focus:outline-none"
+                    >
+                      <option value="Low">Low Risk</option>
+                      <option value="Medium">Medium Severity</option>
+                      <option value="High">High Severity</option>
+                      <option value="Critical">Critical Alert</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-slate-700 font-semibold block mb-1">GPS Coordinates</label>
+                  <input 
+                    type="text" 
+                    name="gpsLocation" 
+                    value={formState.gpsLocation} 
+                    onChange={handleInputChange} 
+                    placeholder="e.g. 11.0168, 76.9558" 
+                    className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-300 text-slate-900 text-xs font-mono focus:bg-white focus:border-blue-600 focus:outline-none" 
+                  />
+                </div>
+
+                <div>
+                  <label className="text-slate-700 font-semibold block mb-1">Inspector Remarks</label>
+                  <textarea 
+                    name="remarks" 
+                    rows={2} 
+                    value={formState.remarks} 
+                    onChange={handleInputChange} 
+                    placeholder="Notes on clip integrity, ballast condition, or torque applied..." 
+                    className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-300 text-slate-900 text-xs focus:bg-white focus:border-blue-600 focus:outline-none" 
+                  />
+                </div>
+
+                <div className="pt-2">
+                  <button 
+                    type="submit" 
+                    className="w-full py-2.5 rounded-xl bg-gradient-to-r from-[#003366] to-[#0055a5] hover:from-[#002244] hover:to-[#004080] text-white text-xs font-semibold shadow-md shadow-blue-950/20 hover:opacity-95 cursor-pointer transition-all"
+                  >
+                    Submit Inspection Record
+                  </button>
+                </div>
+              </form>
+            </div>
+
+            {/* Inspection History Log Table (7 cols) */}
+            <div className="lg:col-span-7 p-6 rounded-2xl bg-white border border-slate-200/90 shadow-sm flex flex-col justify-between">
+              <div>
+                <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100">
+                  <div>
+                    <h3 className="text-sm font-bold text-slate-900">Recent P-Way Inspection Records</h3>
+                    <p className="text-[11px] text-slate-500">Live verified inspections from database</p>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <button 
+                      onClick={fetchInspections}
+                      disabled={isLoadingHistory}
+                      className="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs transition-colors cursor-pointer"
+                      title="Refresh Database Records"
+                    >
+                      <FaSync className={isLoadingHistory ? 'animate-spin' : ''} />
+                    </button>
+                    <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-blue-50 text-blue-700 font-bold border border-blue-200">
+                      {historyList.length} LOGS
+                    </span>
+                  </div>
+                </div>
+
+                <div className="overflow-x-auto rounded-xl border border-slate-200 max-h-[380px] overflow-y-auto">
+                  <table className="w-full text-left text-xs">
+                    <thead className="bg-slate-50 text-slate-600 font-mono uppercase text-[10px] tracking-wider border-b border-slate-200 sticky top-0 z-10">
+                      <tr>
+                        <th className="py-2.5 px-3">Date</th>
+                        <th className="py-2.5 px-3">District</th>
+                        <th className="py-2.5 px-3">Inspector ID</th>
+                        <th className="py-2.5 px-3">Condition</th>
+                        <th className="py-2.5 px-3">Severity</th>
+                        <th className="py-2.5 px-3">GPS Location</th>
+                        <th className="py-2.5 px-3">Remarks</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 text-slate-700">
+                      {isLoadingHistory ? (
+                        <tr>
+                          <td colSpan={7} className="py-8 text-center text-slate-500 font-mono text-xs">
+                            <div className="flex items-center justify-center space-x-2">
+                              <FaSync className="animate-spin text-blue-600 text-sm" />
+                              <span>Fetching inspection logs from database...</span>
+                            </div>
+                          </td>
+                        </tr>
+                      ) : historyList.length === 0 ? (
+                        <tr>
+                          <td colSpan={7} className="py-8 text-center text-slate-400 text-xs">
+                            No inspection records found in database. Log a new inspection using the form.
+                          </td>
+                        </tr>
+                      ) : (
+                        historyList.map((row, idx) => (
+                          <tr key={row.id || idx} className="hover:bg-blue-50/40 transition-colors">
+                            <td className="py-2.5 px-3 font-mono text-slate-600 whitespace-nowrap">
+                              {row.inspectionDate || row.date?.split(' ')[0] || 'N/A'}
+                            </td>
+                            <td className="py-2.5 px-3 font-semibold">
+                              <span className="px-1.5 py-0.5 rounded text-[10px] font-mono bg-blue-50 text-blue-700 border border-blue-200 font-bold whitespace-nowrap">
+                                {row.district || districtOfficer?.district || 'N/A'}
+                              </span>
+                            </td>
+                            <td className="py-2.5 px-3 font-mono font-medium text-slate-900 whitespace-nowrap">
+                              {row.inspectorId || 'N/A'}
+                            </td>
+                            <td className="py-2.5 px-3">
+                              <span className={`px-1.5 py-0.5 rounded text-[10px] font-semibold whitespace-nowrap ${
+                                row.condition === 'Healthy' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' :
+                                row.condition === 'Loose' ? 'bg-amber-50 text-amber-700 border border-amber-200' : 'bg-rose-50 text-rose-700 border border-rose-200'
+                              }`}>
+                                {row.condition || 'Healthy'}
+                              </span>
+                            </td>
+                            <td className="py-2.5 px-3">
+                              <span className={`px-1.5 py-0.5 rounded text-[10px] font-semibold whitespace-nowrap ${
+                                row.severity === 'Low' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' :
+                                row.severity === 'Medium' ? 'bg-amber-50 text-amber-700 border border-amber-200' : 'bg-rose-50 text-rose-700 border border-rose-200'
+                              }`}>
+                                {row.severity || 'Low'}
+                              </span>
+                            </td>
+                            <td className="py-2.5 px-3 font-mono text-[11px] text-slate-600 whitespace-nowrap">
+                              {row.gpsLocation || 'N/A'}
+                            </td>
+                            <td className="py-2.5 px-3 text-slate-600 max-w-[160px] truncate" title={row.remarks || '—'}>
+                              {row.remarks || '—'}
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-500">
+                <span>Total records in database: <strong className="text-slate-800 font-mono">{historyList.length}</strong></span>
+                <button onClick={() => alert('Exporting inspection history...')} className="text-blue-700 font-semibold hover:text-blue-900 cursor-pointer">
+                  Export Inspection Log
+                </button>
+              </div>
+            </div>
+
+          </div>
 
         </main>
 
         {/* FOOTER */}
-        <footer className="mt-auto py-6 px-8 border-t border-white/10 bg-black/40 backdrop-blur-md flex flex-col sm:flex-row items-center justify-between text-xs text-slate-500 gap-4">
-          <div>Inspection Engine: <span className="font-mono text-emerald-400">Firebase Live Sync</span> | Active Inspector: <span className="font-mono text-slate-300">IR-88204</span></div>
-          <div>Powered by React, Firebase, Express & Python XGBoost</div>
+        <footer className="mt-auto py-4 px-8 border-t border-slate-200 bg-white text-xs text-slate-500 flex flex-col sm:flex-row items-center justify-between gap-2">
+          <div>Inspection Engine: <span className="font-mono text-emerald-700 font-bold">Firebase Live Sync</span> | Active Inspector: <span className="font-mono text-slate-800 font-semibold">IR-88204</span></div>
+          <div>Indian Railways Track Telemetry Platform • RDSO Compliant</div>
         </footer>
 
       </div>

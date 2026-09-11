@@ -11,7 +11,8 @@ import {
   FaTools, FaCalendarAlt, FaBuilding, FaIndustry, FaCheck,
   FaArrowRight, FaLayerGroup, FaHistory, FaInfoCircle,
   FaFilePdf, FaFileExcel, FaFileCsv, FaShareAlt, FaEnvelope,
-  FaRobot, FaChartPie, FaChartBar, FaTable, FaClock, FaUserPlus
+  FaRobot, FaChartPie, FaChartBar, FaTable, FaClock, FaUserPlus,
+  FaTrain
 } from 'react-icons/fa';
 import { 
   ResponsiveContainer, PieChart, Pie, Cell, 
@@ -21,25 +22,13 @@ import {
 } from 'recharts';
 
 /* ==========================================================================
-   MERGED COMPONENT 1: LiquidEther (WebGL Fluid simulation canvas)
-   Identical background engine for visual uniformity across all screens.
+   LiquidEther - Railway Atmospheric Blue Ambient Canvas
    ========================================================================== */
 function LiquidEther({
-  colors = ['#5227FF', '#FF9FFC', '#B497CF'],
-  mouseForce = 20,
-  cursorSize = 100,
-  isViscous = true,
-  viscous = 30,
-  iterationsViscous = 32,
-  iterationsPoisson = 32,
-  resolution = 0.5,
-  isBounce = false,
-  autoDemo = true,
-  autoSpeed = 0.5,
-  autoIntensity = 2.2,
-  color0 = '#5227FF',
-  color1 = '#FF9FFC',
-  color2 = '#B497CF'
+  autoSpeed = 0.4,
+  color0 = '#0284c7',
+  color1 = '#003366',
+  color2 = '#075985'
 }) {
   const canvasRef = useRef(null);
 
@@ -221,43 +210,36 @@ export default function Reports() {
   );
 
   return (
-    <div className="relative h-screen bg-[#030712] text-white font-['Poppins',sans-serif] flex overflow-hidden selection:bg-purple-500 selection:text-white">
-      
-      {/* 1. WebGL Liquid Ether Background Engine */}
-      <LiquidEther
-        color0="#5227FF"
-        color1="#FF9FFC"
-        color2="#00D2FF"
-        autoSpeed={0.4}
-      />
+    <div className="relative h-screen bg-slate-50 text-slate-900 font-['Poppins',sans-serif] flex overflow-hidden selection:bg-blue-600 selection:text-white">
 
-      {/* 2. Glow Orbs */}
-      <div className="fixed top-20 left-60 w-96 h-96 bg-purple-600/10 rounded-full filter blur-[150px] pointer-events-none z-0" />
-      <div className="fixed bottom-10 right-10 w-[30rem] h-[30rem] bg-cyan-500/10 rounded-full filter blur-[160px] pointer-events-none z-0" />
-
-      {/* 3. SIDEBAR NAVIGATION */}
+      {/* SIDEBAR NAVIGATION */}
       <motion.aside
         initial={{ width: 260 }}
         animate={{ width: sidebarOpen ? 260 : 80 }}
         transition={{ duration: 0.3 }}
-        className="relative z-30 flex flex-col justify-between border-r border-white/10 bg-black/40 backdrop-blur-2xl min-h-screen shrink-0"
+        className="relative z-30 flex flex-col justify-between border-r border-blue-900/40 bg-[#002244] text-slate-200 min-h-screen shrink-0 shadow-lg"
       >
         <div>
-          <div className="flex items-center gap-3 p-5 border-b border-white/10">
+          <div className="flex items-center gap-3 p-4 border-b border-blue-900/60 bg-[#001b3a]">
             <div className="flex flex-1 items-center space-x-3 min-w-0 overflow-hidden cursor-pointer" onClick={() => navigate('/dashboard')}>
-              <div className="p-2.5 rounded-xl bg-gradient-to-tr from-purple-600 via-blue-600 to-cyan-400 text-white shrink-0 shadow-lg shadow-purple-500/20">
-                <FaQrcode className="text-xl" />
+              <div className="p-2 rounded-xl bg-gradient-to-tr from-[#003366] via-[#004b87] to-[#0284c7] text-amber-300 shrink-0 shadow-md shadow-blue-900/40">
+                <FaTrain className="text-lg" />
               </div>
               {sidebarOpen && (
                 <div className="flex flex-col whitespace-nowrap">
-                  <span className="font-bold text-base bg-gradient-to-r from-white to-purple-300 bg-clip-text text-transparent">
-                    RailClip<span className="text-cyan-400">AI</span>
+                  <span className="font-extrabold text-base text-white tracking-wide">
+                    RailClip<span className="text-blue-400">AI</span>
                   </span>
-                  <span className="text-[9px] text-slate-400 font-mono tracking-widest">ANALYTICS HUB</span>
+                  <span className="text-[9px] text-blue-200 font-mono tracking-widest font-semibold">
+                    IR COMMAND CENTER
+                  </span>
                 </div>
               )}
             </div>
-            <button onClick={() => setSidebarOpen(!sidebarOpen)} className="relative z-20 ml-auto flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-white/5 text-slate-300 transition-all hover:bg-white/10 hover:text-white">
+            <button 
+              onClick={() => setSidebarOpen(!sidebarOpen)} 
+              className="relative z-20 ml-auto flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-blue-800/60 bg-blue-900/30 text-blue-200 transition-all hover:bg-blue-800 hover:text-white cursor-pointer"
+            >
               <AnimatePresence mode="wait" initial={false}>
                 <motion.span
                   key={sidebarOpen ? 'close' : 'open'}
@@ -273,7 +255,7 @@ export default function Reports() {
             </button>
           </div>
 
-          <nav className="p-4 space-y-2">
+          <nav className="p-3.5 space-y-1.5">
             {[
               { label: 'Dashboard', icon: FaChartLine, path: '/dashboard' },
               { label: 'Components', icon: FaQrcode, path: '/components' },
@@ -288,101 +270,120 @@ export default function Reports() {
                 <button
                   key={item.label}
                   onClick={() => handleNavClick(item.label, item.path)}
-                  className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all font-medium text-xs cursor-pointer ${
+                  className={`w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-xl transition-all font-medium text-xs cursor-pointer ${
                     isActive 
-                      ? 'bg-gradient-to-r from-purple-600 to-blue-600 text-white shadow-lg shadow-purple-600/30' 
-                      : 'text-slate-400 hover:bg-white/5 hover:text-white'
+                      ? 'bg-gradient-to-r from-blue-600 to-[#0284c7] text-white border border-blue-400/40 shadow-md shadow-blue-950/30' 
+                      : 'text-blue-100/80 hover:bg-blue-900/40 hover:text-white'
                   }`}
                 >
-                  <Icon className={`text-base ${isActive ? 'text-white' : 'text-slate-400'}`} />
-                  {sidebarOpen && <span className="whitespace-nowrap">{item.label}</span>}
+                  <Icon className={`text-base ${isActive ? 'text-amber-300' : 'text-blue-300'}`} />
+                  {sidebarOpen && <span className="whitespace-nowrap font-semibold">{item.label}</span>}
                 </button>
               );
             })}
           </nav>
         </div>
 
-        <div className="p-4 border-t border-white/10">
-          <button onClick={() => navigate('/login')} className="w-full flex items-center space-x-3 px-4 py-2.5 rounded-xl text-red-400 hover:bg-red-500/10 text-xs font-medium transition-colors cursor-pointer">
+        <div className="p-4 border-t border-blue-900/60 bg-[#001b3a]">
+          <div className={`p-3 rounded-xl bg-blue-950/60 border border-blue-800/40 ${sidebarOpen ? 'block' : 'hidden'}`}>
+            <div className="flex items-center justify-between text-[11px] text-blue-200 mb-1">
+              <span className="font-medium">Export Engine</span>
+              <span className="text-emerald-400 font-mono font-bold">READY</span>
+            </div>
+            <div className="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
+              <div className="bg-gradient-to-r from-blue-400 to-cyan-400 h-full w-[100%]" />
+            </div>
+            <div className="mt-2 text-[10px] text-blue-300 font-mono">PDF & XLSX Multi-Format Export</div>
+          </div>
+          <button 
+            onClick={() => navigate('/login')} 
+            className="w-full mt-3 flex items-center space-x-3 px-3 py-2 rounded-xl text-rose-300 hover:bg-rose-900/20 text-xs font-medium transition-colors cursor-pointer"
+          >
             <FaSignOutAlt className="text-sm" />
             {sidebarOpen && <span>Disconnect Session</span>}
           </button>
         </div>
       </motion.aside>
 
-      {/* 4. MAIN WORKSPACE */}
-      <div className="flex-1 flex flex-col z-20 min-w-0 overflow-y-auto scroll-smooth" style={{ scrollBehavior: 'smooth' }}>
+      {/* MAIN WORKSPACE */}
+      <div className="flex-1 flex flex-col z-20 min-w-0 overflow-y-auto scroll-smooth bg-slate-50" style={{ scrollBehavior: 'smooth' }}>
 
-        {/* HEADER NAVBAR */}
-        <header className="sticky top-0 z-30 px-8 py-4 bg-black/40 backdrop-blur-xl border-b border-white/10 flex items-center justify-between">
+        {/* ================= TOP INDIAN RAILWAYS BANNER STRIP ================= */}
+        <div className="bg-[#002855] text-white text-[11px] sm:text-xs py-1.5 px-6 sm:px-8 border-b border-blue-900/60 flex items-center justify-between">
+          <div className="flex items-center space-x-2 sm:space-x-3">
+            <span className="font-bold tracking-wide text-amber-300">भारतीय रेल</span>
+            <span className="text-blue-300">|</span>
+            <span className="font-bold text-white">INDIAN RAILWAYS</span>
+            <span className="hidden md:inline text-blue-200 font-normal">• Ministry of Railways, Government of India</span>
+          </div>
+          <div className="flex items-center space-x-3 font-mono text-[10.5px] text-blue-200">
+            <span className="text-amber-300 font-semibold">{districtOfficer.subtitle}</span>
+            <span className="text-blue-400">|</span>
+            <span className="text-emerald-400">BROAD GAUGE 1676mm</span>
+          </div>
+        </div>
+
+        {/* ================= HEADER NAVBAR ================= */}
+        <header className="sticky top-0 z-30 px-6 sm:px-8 py-3.5 bg-white/95 backdrop-blur-md border-b border-slate-200 flex items-center justify-between shadow-xs">
           <div>
-            <h1 className="text-lg font-bold text-white flex items-center gap-2">
-              Reports & Executive Analytics
-              <span className="px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 text-[10px] font-mono border border-cyan-500/30">
+            <h1 className="text-base sm:text-lg font-bold text-slate-900 flex items-center gap-2">
+              <span>Reports & Executive Analytics</span>
+              <span className="px-2 py-0.5 rounded-full bg-blue-100 text-blue-800 text-[10px] font-mono font-bold border border-blue-200">
                 EXPORT ENGINE
               </span>
             </h1>
-            <p className="text-xs text-slate-400 font-light">Generate, Visualize, and Export Railway Track Clip Maintenance Reports</p>
+            <p className="text-xs text-slate-500 font-normal">Generate, Visualize, and Export Railway Track Clip Maintenance Reports</p>
           </div>
 
           <div className="flex items-center space-x-4">
-            <div className="relative hidden md:block">
-              <FaSearch className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500 text-xs" />
-              <input 
-                type="text" 
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search Reports Archive..."
-                className="pl-9 pr-4 py-2 w-64 rounded-xl bg-black/50 border border-white/10 text-white placeholder:text-slate-600 text-xs focus:outline-none focus:border-purple-500 transition-all"
-              />
-            </div>
-
-            <button className="relative p-2.5 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 text-slate-300 transition-colors">
-              <FaBell className="text-sm" />
-              <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-cyan-400 animate-ping" />
+            <button className="relative p-2.5 rounded-xl bg-slate-100 border border-slate-200 hover:bg-slate-200 text-slate-700 transition-colors cursor-pointer">
+              <FaBell className="text-sm text-slate-700" />
+              <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-amber-500 animate-ping" />
             </button>
 
-            <div className="hidden lg:flex items-center space-x-2 px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-xs font-mono text-slate-300">
-              <span className="w-2 h-2 rounded-full bg-emerald-400" />
+            <div className="hidden lg:flex items-center space-x-2 px-3 py-2 rounded-xl bg-slate-100 border border-slate-200 text-xs font-mono text-slate-700 font-semibold">
+              <span className="w-2 h-2 rounded-full bg-emerald-500" />
               <span>SYS TIME: {currentTime.toLocaleTimeString()}</span>
             </div>
 
-            <div className="flex items-center space-x-3 pl-3 border-l border-white/10">
-              <FaUserCircle className="text-2xl text-purple-400" />
+            <div className="flex items-center space-x-3 pl-3 border-l border-slate-200">
+              <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-[#003366] to-[#0284c7] text-white flex items-center justify-center font-bold text-xs shadow-sm">
+                <FaTrain className="text-amber-300" />
+              </div>
               <div className="hidden sm:flex flex-col text-left">
-                <span className="text-xs font-medium text-white leading-none">{districtOfficer.title}</span>
-                <span className="text-[10px] text-slate-400">{districtOfficer.subtitle}</span>
+                <span className="text-xs font-bold text-slate-900 leading-none">{districtOfficer.title}</span>
+                <span className="text-[10px] text-slate-500 font-medium mt-0.5">{districtOfficer.subtitle}</span>
               </div>
             </div>
           </div>
         </header>
 
         {/* WORKSPACE BODY */}
-        <main className="p-8 space-y-8 max-w-7xl w-full mx-auto">
+        <main className="p-6 sm:p-8 space-y-6 max-w-7xl w-full mx-auto">
 
           {/* AI SUMMARY HIGHLIGHT BANNER */}
           <motion.div 
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="p-5 rounded-2xl bg-gradient-to-r from-purple-900/40 via-blue-900/30 to-black border border-purple-500/30 backdrop-blur-xl relative overflow-hidden"
+            className="p-5 rounded-2xl bg-white border border-slate-200 shadow-sm relative overflow-hidden"
           >
             <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
               <div className="flex items-start space-x-4">
-                <div className="p-3 rounded-2xl bg-purple-600/20 border border-purple-500/40 text-cyan-400 text-xl shrink-0 mt-1 md:mt-0">
+                <div className="p-3 rounded-2xl bg-blue-50 border border-blue-200 text-blue-700 text-xl shrink-0 mt-1 md:mt-0 shadow-xs">
                   <FaRobot className="animate-pulse" />
                 </div>
                 <div>
-                  <h2 className="text-sm font-bold text-white flex items-center gap-2">
+                  <h2 className="text-sm font-bold text-slate-900 flex items-center gap-2">
                     Executive Analytics & AI Maintenance Directives
-                    <span className="text-[10px] px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 font-mono">Live Firestore Audit</span>
+                    <span className="text-[10px] px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200 font-mono font-semibold">Live Firestore Audit</span>
                   </h2>
-                  <p className="text-xs text-slate-300 mt-1 leading-relaxed">
-                    "Average track clip health score increased by <strong className="text-emerald-400">+11%</strong> this month. 42 clips require maintenance within 10 days. Inspection efficiency improved by <strong className="text-cyan-400">+18%</strong> across the Southern Zone."
+                  <p className="text-xs text-slate-600 mt-1 leading-relaxed">
+                    Average track clip health score increased by <strong className="text-emerald-700 font-semibold">+11%</strong> this month. 42 clips require maintenance within 10 days. Inspection efficiency improved by <strong className="text-blue-700 font-semibold">+18%</strong> across the section.
                   </p>
                 </div>
               </div>
               <div className="flex items-center space-x-2 shrink-0">
-                <button onClick={() => alert('Generating Executive Summary PDF...')} className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-purple-600 to-cyan-500 text-white text-xs font-semibold shadow-lg shadow-purple-600/30 hover:opacity-90 flex items-center space-x-2 cursor-pointer">
+                <button onClick={() => alert('Generating Executive Summary PDF...')} className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-orange-600 via-amber-600 to-amber-500 text-white text-xs font-semibold shadow-md shadow-orange-600/20 hover:opacity-95 flex items-center space-x-2 cursor-pointer transition-all">
                   <FaFilePdf />
                   <span>Download Executive PDF</span>
                 </button>
@@ -393,26 +394,26 @@ export default function Reports() {
           {/* 1. TOP STATS CARDS */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
             {[
-              { title: 'Total Generated', count: '1,420', trend: '+14%', isPositive: true, icon: FaFolder, color: 'from-blue-600 to-cyan-400' },
-              { title: "Today's Reports", count: '12', trend: '+4', isPositive: true, icon: FaCalendarAlt, color: 'from-purple-600 to-indigo-400' },
-              { title: 'Inspection Audits', count: '890', trend: '+18%', isPositive: true, icon: FaShieldAlt, color: 'from-emerald-600 to-teal-400' },
-              { title: 'Maintenance Logs', count: '340', trend: '+8%', isPositive: true, icon: FaTools, color: 'from-amber-600 to-yellow-400' },
-              { title: 'AI Prediction Reports', count: '190', trend: '+22%', isPositive: true, icon: FaBrain, color: 'from-cyan-600 to-blue-500' },
-              { title: 'Exports Count', count: '3,840', trend: '+30%', isPositive: true, icon: FaDownload, color: 'from-rose-600 to-pink-500' },
+              { title: 'Total Generated', count: '1,420', trend: '+14%', isPositive: true, icon: FaFolder, color: 'from-[#002855] to-blue-700' },
+              { title: "Today's Reports", count: '12', trend: '+4', isPositive: true, icon: FaCalendarAlt, color: 'from-blue-700 to-indigo-600' },
+              { title: 'Inspection Audits', count: '890', trend: '+18%', isPositive: true, icon: FaShieldAlt, color: 'from-emerald-700 to-emerald-600' },
+              { title: 'Maintenance Logs', count: '340', trend: '+8%', isPositive: true, icon: FaTools, color: 'from-amber-600 to-orange-500' },
+              { title: 'AI Prediction Reports', count: '190', trend: '+22%', isPositive: true, icon: FaBrain, color: 'from-sky-700 to-blue-600' },
+              { title: 'Exports Count', count: '3,840', trend: '+30%', isPositive: true, icon: FaDownload, color: 'from-rose-700 to-pink-600' },
             ].map((stat, idx) => {
               const Icon = stat.icon;
               return (
-                <div key={idx} className="p-5 rounded-2xl bg-slate-900/50 border border-white/10 backdrop-blur-xl hover:border-purple-500/40 transition-all">
+                <div key={idx} className="p-4 rounded-2xl bg-white border border-slate-200 shadow-sm hover:shadow-md hover:border-blue-300 transition-all">
                   <div className="flex items-center justify-between mb-3">
-                    <div className={`p-2.5 rounded-xl bg-gradient-to-tr ${stat.color} text-white shadow-md`}>
+                    <div className={`p-2.5 rounded-xl bg-gradient-to-tr ${stat.color} text-white shadow-xs`}>
                       <Icon className="text-base" />
                     </div>
-                    <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-400">
+                    <span className="text-[10px] font-mono font-semibold px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200">
                       {stat.trend}
                     </span>
                   </div>
-                  <div className="text-2xl font-bold text-white mb-1">{stat.count}</div>
-                  <div className="text-[11px] text-slate-400 truncate">{stat.title}</div>
+                  <div className="text-2xl font-bold text-slate-900 mb-0.5">{stat.count}</div>
+                  <div className="text-[11px] text-slate-500 truncate font-medium">{stat.title}</div>
                 </div>
               );
             })}
@@ -420,30 +421,30 @@ export default function Reports() {
 
           {/* 2. REPORT TEMPLATES CARDS */}
           <div className="space-y-3">
-            <h2 className="text-sm font-bold text-white flex items-center gap-2">
-              <FaLayerGroup className="text-cyan-400" />
+            <h2 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+              <FaLayerGroup className="text-blue-700" />
               Quick Report Templates
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               {mockReportTemplates.map((tpl) => {
                 const Icon = tpl.icon;
                 return (
-                  <div key={tpl.id} className="p-5 rounded-2xl bg-slate-900/50 border border-white/10 backdrop-blur-xl hover:border-purple-500/40 transition-all flex flex-col justify-between group">
+                  <div key={tpl.id} className="p-5 rounded-2xl bg-white border border-slate-200 shadow-sm hover:shadow-md hover:border-blue-400 transition-all flex flex-col justify-between group">
                     <div>
                       <div className="flex items-center justify-between mb-3">
-                        <div className="p-2.5 rounded-xl bg-white/5 border border-white/10 text-cyan-400 group-hover:bg-purple-600 group-hover:text-white transition-colors">
+                        <div className="p-2.5 rounded-xl bg-blue-50 border border-blue-200 text-blue-700 group-hover:bg-[#002855] group-hover:text-amber-300 transition-colors shadow-xs">
                           <Icon className="text-base" />
                         </div>
-                        <span className="text-[10px] px-2 py-0.5 rounded bg-purple-500/20 text-purple-300 font-mono">
+                        <span className="text-[10px] px-2 py-0.5 rounded bg-blue-50 text-blue-700 font-mono font-semibold border border-blue-200">
                           {tpl.tag}
                         </span>
                       </div>
-                      <h3 className="text-xs font-bold text-white mb-1">{tpl.title}</h3>
-                      <p className="text-[11px] text-slate-400 leading-relaxed">{tpl.desc}</p>
+                      <h3 className="text-xs font-bold text-slate-900 mb-1">{tpl.title}</h3>
+                      <p className="text-[11px] text-slate-500 leading-relaxed">{tpl.desc}</p>
                     </div>
                     <button 
                       onClick={() => { setReportType(tpl.title); setIsPreviewing(true); }}
-                      className="mt-4 w-full py-2 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 text-white text-xs font-medium transition-all flex items-center justify-center space-x-2 cursor-pointer"
+                      className="mt-4 w-full py-2 rounded-xl bg-slate-50 border border-slate-200 hover:bg-blue-50 hover:text-blue-700 hover:border-blue-300 text-slate-700 text-xs font-semibold transition-all flex items-center justify-center space-x-2 cursor-pointer"
                     >
                       <span>Load Template</span>
                       <FaArrowRight className="text-[10px]" />
@@ -455,22 +456,22 @@ export default function Reports() {
           </div>
 
           {/* 3. REPORT GENERATOR & LIVE PREVIEW ROW */}
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
             
             {/* Custom Report Configurator (5 cols) */}
-            <div className="lg:col-span-5 p-6 rounded-2xl bg-slate-900/50 border border-white/10 backdrop-blur-xl flex flex-col justify-between">
+            <div className="lg:col-span-5 p-6 rounded-2xl bg-white border border-slate-200 shadow-sm flex flex-col justify-between">
               <div>
                 <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-sm font-bold text-white flex items-center gap-2">
-                    <FaCogs className="text-cyan-400" />
+                  <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                    <FaCogs className="text-blue-700" />
                     Configure Custom Report
                   </h3>
                 </div>
 
                 <form onSubmit={handleGenerateReport} className="space-y-4 text-xs">
                   <div>
-                    <label className="text-slate-300 block mb-1">Report Category *</label>
-                    <select value={reportType} onChange={(e) => setReportType(e.target.value)} className="w-full px-3 py-2 rounded-xl bg-black/40 border border-white/10 text-white focus:outline-none">
+                    <label className="text-slate-700 font-medium block mb-1">Report Category *</label>
+                    <select value={reportType} onChange={(e) => setReportType(e.target.value)} className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-300 text-slate-900 focus:outline-none focus:bg-white focus:border-blue-600 focus:ring-1 focus:ring-blue-600 font-medium">
                       <option value="Inspection Report">Inspection & Scan Report</option>
                       <option value="Maintenance Report">Maintenance & Tightening Log</option>
                       <option value="AI Prediction Report">AI Risk Priority Report</option>
@@ -481,19 +482,19 @@ export default function Reports() {
 
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className="text-slate-300 block mb-1">Start Date</label>
-                      <input type="date" value={dateRange.start} onChange={(e) => setDateRange({ ...dateRange, start: e.target.value })} className="w-full px-3 py-2 rounded-xl bg-black/40 border border-white/10 text-white" />
+                      <label className="text-slate-700 font-medium block mb-1">Start Date</label>
+                      <input type="date" value={dateRange.start} onChange={(e) => setDateRange({ ...dateRange, start: e.target.value })} className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-300 text-slate-900 focus:bg-white focus:border-blue-600" />
                     </div>
                     <div>
-                      <label className="text-slate-300 block mb-1">End Date</label>
-                      <input type="date" value={dateRange.end} onChange={(e) => setDateRange({ ...dateRange, end: e.target.value })} className="w-full px-3 py-2 rounded-xl bg-black/40 border border-white/10 text-white" />
+                      <label className="text-slate-700 font-medium block mb-1">End Date</label>
+                      <input type="date" value={dateRange.end} onChange={(e) => setDateRange({ ...dateRange, end: e.target.value })} className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-300 text-slate-900 focus:bg-white focus:border-blue-600" />
                     </div>
                   </div>
 
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className="text-slate-300 block mb-1">Railway Zone</label>
-                      <select value={selectedZone} onChange={(e) => setSelectedZone(e.target.value)} className="w-full px-3 py-2 rounded-xl bg-black/40 border border-white/10 text-white focus:outline-none">
+                      <label className="text-slate-700 font-medium block mb-1">Railway Zone</label>
+                      <select value={selectedZone} onChange={(e) => setSelectedZone(e.target.value)} className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-300 text-slate-900 focus:outline-none focus:bg-white focus:border-blue-600">
                         <option value="All">All Zones</option>
                         <option value="Southern">Southern</option>
                         <option value="Northern">Northern</option>
@@ -502,8 +503,8 @@ export default function Reports() {
                       </select>
                     </div>
                     <div>
-                      <label className="text-slate-300 block mb-1">Priority Class</label>
-                      <select value={selectedPriority} onChange={(e) => setSelectedPriority(e.target.value)} className="w-full px-3 py-2 rounded-xl bg-black/40 border border-white/10 text-white focus:outline-none">
+                      <label className="text-slate-700 font-medium block mb-1">Priority Class</label>
+                      <select value={selectedPriority} onChange={(e) => setSelectedPriority(e.target.value)} className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-300 text-slate-900 focus:outline-none focus:bg-white focus:border-blue-600">
                         <option value="All">All Priorities</option>
                         <option value="Low">Low Risk</option>
                         <option value="Medium">Medium Risk</option>
@@ -514,7 +515,7 @@ export default function Reports() {
                   </div>
 
                   <div className="pt-2">
-                    <button type="submit" disabled={isGenerating} className="w-full py-2.5 rounded-xl bg-gradient-to-r from-purple-600 via-blue-600 to-cyan-500 text-white text-xs font-semibold shadow-lg shadow-purple-600/30 hover:opacity-90 flex items-center justify-center space-x-2 cursor-pointer">
+                    <button type="submit" disabled={isGenerating} className="w-full py-2.5 rounded-xl bg-gradient-to-r from-orange-600 via-amber-600 to-yellow-500 text-white text-xs font-semibold shadow-md shadow-orange-600/20 hover:opacity-95 flex items-center justify-center space-x-2 cursor-pointer transition-all">
                       <FaSync className={isGenerating ? 'animate-spin' : ''} />
                       <span>{isGenerating ? 'Compiling Dataset...' : 'Generate & Render Report'}</span>
                     </button>
@@ -523,18 +524,18 @@ export default function Reports() {
               </div>
 
               {/* Export Buttons */}
-              <div className="mt-6 pt-4 border-t border-white/10">
-                <div className="text-[11px] text-slate-400 mb-2">Export Format Support:</div>
+              <div className="mt-6 pt-4 border-t border-slate-200">
+                <div className="text-[11px] text-slate-500 font-medium mb-2">Export Format Support:</div>
                 <div className="grid grid-cols-3 gap-2">
-                  <button onClick={() => alert('Exporting PDF File via jsPDF...')} className="py-2 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 text-red-400 text-xs flex items-center justify-center space-x-1 cursor-pointer">
+                  <button onClick={() => alert('Exporting PDF File via jsPDF...')} className="py-2 rounded-xl bg-rose-50 border border-rose-200 hover:bg-rose-100/80 text-rose-700 text-xs font-semibold flex items-center justify-center space-x-1 cursor-pointer transition-colors">
                     <FaFilePdf />
                     <span>PDF</span>
                   </button>
-                  <button onClick={() => alert('Exporting Excel Sheet via XLSX...')} className="py-2 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 text-emerald-400 text-xs flex items-center justify-center space-x-1 cursor-pointer">
+                  <button onClick={() => alert('Exporting Excel Sheet via XLSX...')} className="py-2 rounded-xl bg-emerald-50 border border-emerald-200 hover:bg-emerald-100/80 text-emerald-700 text-xs font-semibold flex items-center justify-center space-x-1 cursor-pointer transition-colors">
                     <FaFileExcel />
                     <span>XLSX</span>
                   </button>
-                  <button onClick={() => alert('Exporting CSV File...')} className="py-2 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 text-cyan-400 text-xs flex items-center justify-center space-x-1 cursor-pointer">
+                  <button onClick={() => alert('Exporting CSV File...')} className="py-2 rounded-xl bg-blue-50 border border-blue-200 hover:bg-blue-100/80 text-blue-700 text-xs font-semibold flex items-center justify-center space-x-1 cursor-pointer transition-colors">
                     <FaFileCsv />
                     <span>CSV</span>
                   </button>
@@ -543,38 +544,38 @@ export default function Reports() {
             </div>
 
             {/* Live Report Preview Canvas (7 cols) */}
-            <div className="lg:col-span-7 p-6 rounded-2xl bg-slate-900/50 border border-white/10 backdrop-blur-xl flex flex-col justify-between min-h-[420px]">
+            <div className="lg:col-span-7 p-6 rounded-2xl bg-white border border-slate-200 shadow-sm flex flex-col justify-between min-h-[420px]">
               <div>
-                <div className="flex items-center justify-between border-b border-white/10 pb-4 mb-4">
+                <div className="flex items-center justify-between border-b border-slate-200 pb-4 mb-4">
                   <div>
-                    <span className="text-[10px] font-mono text-cyan-400">INDIAN RAILWAYS ANALYTICS DIVISION</span>
-                    <h3 className="text-base font-bold text-white">{reportType}</h3>
-                    <span className="text-[11px] text-slate-400">Date Window: {dateRange.start} to {dateRange.end} | Zone: {selectedZone}</span>
+                    <span className="text-[10px] font-mono font-bold text-blue-700">INDIAN RAILWAYS ANALYTICS DIVISION</span>
+                    <h3 className="text-base font-bold text-slate-900">{reportType}</h3>
+                    <span className="text-[11px] text-slate-500">Date Window: {dateRange.start} to {dateRange.end} | Zone: {selectedZone}</span>
                   </div>
-                  <button onClick={() => window.print()} className="px-3 py-1.5 rounded-xl bg-cyan-600 text-white text-xs font-semibold flex items-center space-x-1 cursor-pointer">
+                  <button onClick={() => window.print()} className="px-3 py-1.5 rounded-xl bg-[#002855] hover:bg-[#003875] text-white text-xs font-semibold flex items-center space-x-1.5 cursor-pointer shadow-xs transition-colors">
                     <FaPrint />
                     <span>Print</span>
                   </button>
                 </div>
 
                 {/* Printable Document Summary Box */}
-                <div className="p-4 rounded-2xl bg-black/40 border border-white/5 space-y-4">
+                <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-4">
                   <div className="grid grid-cols-3 gap-2 text-center text-xs">
-                    <div className="p-2.5 rounded-xl bg-white/5">
-                      <span className="text-slate-400 text-[10px] block">Clips Evaluated</span>
-                      <span className="text-base font-bold text-white">5,842</span>
+                    <div className="p-2.5 rounded-xl bg-white border border-slate-200 shadow-xs">
+                      <span className="text-slate-500 text-[10px] block font-medium">Clips Evaluated</span>
+                      <span className="text-base font-bold text-slate-900">5,842</span>
                     </div>
-                    <div className="p-2.5 rounded-xl bg-white/5">
-                      <span className="text-slate-400 text-[10px] block">Mean Health</span>
-                      <span className="text-base font-bold text-emerald-400">92.4%</span>
+                    <div className="p-2.5 rounded-xl bg-white border border-slate-200 shadow-xs">
+                      <span className="text-slate-500 text-[10px] block font-medium">Mean Health</span>
+                      <span className="text-base font-bold text-emerald-700">92.4%</span>
                     </div>
-                    <div className="p-2.5 rounded-xl bg-white/5">
-                      <span className="text-slate-400 text-[10px] block">Action Required</span>
-                      <span className="text-base font-bold text-amber-400">27 Clips</span>
+                    <div className="p-2.5 rounded-xl bg-white border border-slate-200 shadow-xs">
+                      <span className="text-slate-500 text-[10px] block font-medium">Action Required</span>
+                      <span className="text-base font-bold text-amber-700">27 Clips</span>
                     </div>
                   </div>
 
-                  <div className="text-xs text-slate-300 leading-relaxed font-light">
+                  <div className="text-xs text-slate-600 leading-relaxed font-normal">
                     "This automated telemetry document compiles physical scanner logs, inspector badge verification records, and Python XGBoost failure predictions across the specified section."
                   </div>
                 </div>
@@ -583,60 +584,60 @@ export default function Reports() {
                 <div className="mt-4 h-36 w-full">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={mockInspectionTrendData}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
+                      <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
                       <XAxis dataKey="month" stroke="#64748b" fontSize={10} />
                       <YAxis stroke="#64748b" fontSize={10} />
-                      <Tooltip contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', borderRadius: '8px', fontSize: '11px' }} />
-                      <Bar dataKey="inspections" fill="#00D2FF" radius={[4, 4, 0, 0]} />
+                      <Tooltip contentStyle={{ backgroundColor: '#ffffff', borderColor: '#cbd5e1', borderRadius: '8px', fontSize: '11px', color: '#0f172a', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
+                      <Bar dataKey="inspections" fill="#002855" radius={[4, 4, 0, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
               </div>
 
-              <div className="pt-3 border-t border-white/5 flex items-center justify-between text-[10px] text-slate-500 font-mono">
+              <div className="pt-3 border-t border-slate-200 flex items-center justify-between text-[10px] text-slate-500 font-mono">
                 <span>Generated via RailClipAI Engine</span>
-                <span>Signature: Authenticated Cryptographic Hash</span>
+                <span className="text-emerald-700 font-medium">Signature: Authenticated Cryptographic Hash</span>
               </div>
             </div>
 
           </div>
 
           {/* 4. COMPONENT SUMMARY TABLE & RECHARTS ROW */}
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
             
             {/* Component Summary Data Table (7 cols) */}
-            <div className="lg:col-span-7 p-6 rounded-2xl bg-slate-900/50 border border-white/10 backdrop-blur-xl">
-              <h3 className="text-sm font-bold text-white mb-1">Telemetric Asset Health Breakdown</h3>
-              <p className="text-[11px] text-slate-400 mb-4">Sample component records compiled in current report</p>
+            <div className="lg:col-span-7 p-6 rounded-2xl bg-white border border-slate-200 shadow-sm">
+              <h3 className="text-sm font-bold text-slate-900 mb-0.5">Telemetric Asset Health Breakdown</h3>
+              <p className="text-[11px] text-slate-500 mb-4">Sample component records compiled in current report</p>
 
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs">
                   <thead>
-                    <tr className="border-b border-white/10 text-slate-400 font-mono uppercase text-[10px] tracking-wider">
-                      <th className="pb-3 px-3">QR ID</th>
-                      <th className="pb-3 px-3">Component</th>
-                      <th className="pb-3 px-3">Station</th>
-                      <th className="pb-3 px-3">Health Score</th>
-                      <th className="pb-3 px-3">Priority</th>
-                      <th className="pb-3 px-3">Status</th>
+                    <tr className="border-b border-slate-200 bg-slate-50 text-slate-600 font-mono uppercase text-[10px] tracking-wider">
+                      <th className="py-2.5 px-3">QR ID</th>
+                      <th className="py-2.5 px-3">Component</th>
+                      <th className="py-2.5 px-3">Station</th>
+                      <th className="py-2.5 px-3">Health Score</th>
+                      <th className="py-2.5 px-3">Priority</th>
+                      <th className="py-2.5 px-3">Status</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-white/5 text-slate-300">
+                  <tbody className="divide-y divide-slate-100 text-slate-700">
                     {mockComponentSummary.map((row, idx) => (
-                      <tr key={idx} className="hover:bg-white/5 transition-colors">
-                        <td className="py-3 px-3 font-mono text-cyan-400 font-semibold">{row.qrId}</td>
-                        <td className="py-3 px-3 font-medium text-white">{row.compId}</td>
-                        <td className="py-3 px-3 text-slate-400">{row.station}</td>
-                        <td className="py-3 px-3 font-bold text-emerald-400">{row.health}/100</td>
+                      <tr key={idx} className="hover:bg-blue-50/40 transition-colors">
+                        <td className="py-3 px-3 font-mono text-blue-700 font-semibold">{row.qrId}</td>
+                        <td className="py-3 px-3 font-medium text-slate-900">{row.compId}</td>
+                        <td className="py-3 px-3 text-slate-600">{row.station}</td>
+                        <td className="py-3 px-3 font-bold text-emerald-700">{row.health}/100</td>
                         <td className="py-3 px-3">
                           <span className={`px-2 py-0.5 rounded text-[10px] font-semibold ${
-                            row.priority === 'Low' ? 'bg-emerald-500/15 text-emerald-400' :
-                            row.priority === 'Medium' ? 'bg-amber-500/15 text-amber-400' : 'bg-red-500/15 text-red-400'
+                            row.priority === 'Low' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' :
+                            row.priority === 'Medium' ? 'bg-amber-50 text-amber-700 border border-amber-200' : 'bg-rose-50 text-rose-700 border border-rose-200'
                           }`}>
                             {row.priority}
                           </span>
                         </td>
-                        <td className="py-3 px-3 text-slate-400">{row.status}</td>
+                        <td className="py-3 px-3 text-slate-600 font-medium">{row.status}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -645,9 +646,9 @@ export default function Reports() {
             </div>
 
             {/* Health Distribution Donut Chart (5 cols) */}
-            <div className="lg:col-span-5 p-6 rounded-2xl bg-slate-900/50 border border-white/10 backdrop-blur-xl">
-              <h3 className="text-sm font-bold text-white mb-1">Asset Health Index Distribution</h3>
-              <p className="text-[11px] text-slate-400 mb-4">Percentage breakdown across network</p>
+            <div className="lg:col-span-5 p-6 rounded-2xl bg-white border border-slate-200 shadow-sm">
+              <h3 className="text-sm font-bold text-slate-900 mb-0.5">Asset Health Index Distribution</h3>
+              <p className="text-[11px] text-slate-500 mb-4">Percentage breakdown across network</p>
               <div className="h-56 w-full flex items-center justify-center">
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
@@ -656,7 +657,7 @@ export default function Reports() {
                         <Cell key={`cell-${idx}`} fill={entry.color} />
                       ))}
                     </Pie>
-                    <Tooltip contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', borderRadius: '12px', fontSize: '12px' }} />
+                    <Tooltip contentStyle={{ backgroundColor: '#ffffff', borderColor: '#cbd5e1', borderRadius: '12px', fontSize: '12px', color: '#0f172a', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
                   </PieChart>
                 </ResponsiveContainer>
               </div>
@@ -665,39 +666,39 @@ export default function Reports() {
           </div>
 
           {/* 5. HISTORICAL REPORTS & SCHEDULED REPORTS ROW */}
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
             
             {/* Generated Reports History Table (8 cols) */}
-            <div className="lg:col-span-8 p-6 rounded-2xl bg-slate-900/50 border border-white/10 backdrop-blur-xl">
-              <h3 className="text-sm font-bold text-white mb-1">Generated Reports Archive</h3>
-              <p className="text-[11px] text-slate-400 mb-4">Historical downloadable PDF/XLSX logs</p>
+            <div className="lg:col-span-8 p-6 rounded-2xl bg-white border border-slate-200 shadow-sm">
+              <h3 className="text-sm font-bold text-slate-900 mb-0.5">Generated Reports Archive</h3>
+              <p className="text-[11px] text-slate-500 mb-4">Historical downloadable PDF/XLSX logs</p>
 
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs">
                   <thead>
-                    <tr className="border-b border-white/10 text-slate-400 font-mono uppercase text-[10px] tracking-wider">
-                      <th className="pb-3 px-4">Report ID</th>
-                      <th className="pb-3 px-4">Title & Type</th>
-                      <th className="pb-3 px-4">Generated By</th>
-                      <th className="pb-3 px-4">Date</th>
-                      <th className="pb-3 px-4 text-right">Actions</th>
+                    <tr className="border-b border-slate-200 bg-slate-50 text-slate-600 font-mono uppercase text-[10px] tracking-wider">
+                      <th className="py-2.5 px-4">Report ID</th>
+                      <th className="py-2.5 px-4">Title & Type</th>
+                      <th className="py-2.5 px-4">Generated By</th>
+                      <th className="py-2.5 px-4">Date</th>
+                      <th className="py-2.5 px-4 text-right">Actions</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-white/5 text-slate-300">
+                  <tbody className="divide-y divide-slate-100 text-slate-700">
                     {filteredHistory.map((rpt) => (
-                      <tr key={rpt.id} className="hover:bg-white/5 transition-colors">
-                        <td className="py-3.5 px-4 font-mono text-cyan-400 font-semibold">{rpt.id}</td>
+                      <tr key={rpt.id} className="hover:bg-blue-50/40 transition-colors">
+                        <td className="py-3.5 px-4 font-mono text-blue-700 font-semibold">{rpt.id}</td>
                         <td className="py-3.5 px-4">
-                          <div className="font-medium text-white">{rpt.title}</div>
+                          <div className="font-semibold text-slate-900">{rpt.title}</div>
                           <div className="text-[10px] text-slate-500">{rpt.type}</div>
                         </td>
-                        <td className="py-3.5 px-4 text-slate-400">{rpt.author}</td>
+                        <td className="py-3.5 px-4 text-slate-600">{rpt.author}</td>
                         <td className="py-3.5 px-4 font-mono text-slate-500 text-[11px]">{rpt.date}</td>
                         <td className="py-3.5 px-4 text-right space-x-2">
-                          <button onClick={() => { setSelectedReport(rpt); setDrawerOpen(true); }} className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-cyan-400 cursor-pointer">
+                          <button onClick={() => { setSelectedReport(rpt); setDrawerOpen(true); }} className="p-1.5 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 cursor-pointer transition-colors" title="View details">
                             <FaEye />
                           </button>
-                          <button onClick={() => alert(`Downloading ${rpt.title}...`)} className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-purple-400 cursor-pointer">
+                          <button onClick={() => alert(`Downloading ${rpt.title}...`)} className="p-1.5 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-700 cursor-pointer transition-colors" title="Download report">
                             <FaDownload />
                           </button>
                         </td>
@@ -709,26 +710,26 @@ export default function Reports() {
             </div>
 
             {/* Scheduled Automated Reports Panel (4 cols) */}
-            <div className="lg:col-span-4 p-6 rounded-2xl bg-slate-900/50 border border-white/10 backdrop-blur-xl flex flex-col justify-between">
+            <div className="lg:col-span-4 p-6 rounded-2xl bg-white border border-slate-200 shadow-sm flex flex-col justify-between">
               <div>
-                <h3 className="text-sm font-bold text-white mb-1">Automated Scheduled Reports</h3>
-                <p className="text-[11px] text-slate-400 mb-4">Cron schedules sending direct PDF emails</p>
+                <h3 className="text-sm font-bold text-slate-900 mb-0.5">Automated Scheduled Reports</h3>
+                <p className="text-[11px] text-slate-500 mb-4">Cron schedules sending direct PDF emails</p>
 
                 <div className="space-y-3">
                   {mockScheduledReports.map((sch, idx) => (
-                    <div key={idx} className="p-3 rounded-xl bg-black/40 border border-white/5 text-xs">
-                      <div className="font-bold text-white flex items-center justify-between">
+                    <div key={idx} className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs">
+                      <div className="font-bold text-slate-900 flex items-center justify-between">
                         <span>{sch.title}</span>
-                        <span className="text-[10px] text-emerald-400 font-mono">{sch.status}</span>
+                        <span className="text-[10px] text-emerald-700 font-mono font-semibold px-1.5 py-0.2 rounded bg-emerald-50 border border-emerald-200">{sch.status}</span>
                       </div>
-                      <div className="text-[11px] text-slate-400 mt-1">{sch.freq}</div>
+                      <div className="text-[11px] text-slate-600 mt-1">{sch.freq}</div>
                       <div className="text-[10px] text-slate-500 font-mono mt-0.5">Next Run: {sch.nextRun}</div>
                     </div>
                   ))}
                 </div>
               </div>
 
-              <button onClick={() => alert('Opening Schedule Configurator...')} className="mt-4 w-full py-2.5 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 text-white text-xs font-semibold cursor-pointer">
+              <button onClick={() => alert('Opening Schedule Configurator...')} className="mt-4 w-full py-2.5 rounded-xl bg-slate-50 border border-slate-300 hover:bg-blue-50 hover:text-blue-700 hover:border-blue-300 text-slate-800 text-xs font-semibold cursor-pointer transition-all">
                 + Add Scheduled Report
               </button>
             </div>
@@ -736,21 +737,21 @@ export default function Reports() {
           </div>
 
           {/* 6. QUICK ACTION BUTTONS */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
             {[
-              { label: 'Generate Inspection Report', icon: FaShieldAlt, color: 'from-purple-600 to-blue-600', path: '/inspections' },
-              { label: 'View Asset Inventory', icon: FaQrcode, color: 'from-cyan-600 to-teal-600', path: '/components' },
-              { label: 'Run AI Prediction Model', icon: FaBrain, color: 'from-blue-600 to-indigo-600', path: '/ai-analysis' },
-              { label: 'Back to Command Dashboard', icon: FaChartLine, color: 'from-slate-700 to-slate-800', path: '/dashboard' },
+              { label: 'Generate Inspection Report', icon: FaShieldAlt, color: 'from-[#002855] to-blue-700', path: '/inspections' },
+              { label: 'View Asset Inventory', icon: FaQrcode, color: 'from-blue-700 to-indigo-600', path: '/components' },
+              { label: 'Run AI Prediction Model', icon: FaBrain, color: 'from-sky-700 to-blue-600', path: '/ai-analysis' },
+              { label: 'Back to Command Dashboard', icon: FaChartLine, color: 'from-[#002244] to-[#003875]', path: '/dashboard' },
             ].map((btn, idx) => {
               const Icon = btn.icon;
               return (
                 <button 
                   key={idx}
                   onClick={() => navigate(btn.path)}
-                  className={`p-4 rounded-2xl bg-gradient-to-r ${btn.color} text-white font-medium text-xs shadow-lg flex items-center justify-center space-x-3 hover:opacity-90 transition-all cursor-pointer`}
+                  className={`p-4 rounded-2xl bg-gradient-to-r ${btn.color} text-white font-medium text-xs shadow-md shadow-blue-900/10 flex items-center justify-center space-x-3 hover:opacity-95 active:scale-[0.99] transition-all cursor-pointer border border-blue-900/20`}
                 >
-                  <Icon className="text-sm" />
+                  <Icon className="text-sm text-amber-300" />
                   <span>{btn.label}</span>
                 </button>
               );
@@ -762,41 +763,41 @@ export default function Reports() {
         {/* 7. VIEW REPORT DRAWER */}
         <AnimatePresence>
           {drawerOpen && selectedReport && (
-            <div className="fixed inset-0 z-50 flex justify-end bg-black/60 backdrop-blur-sm">
-              <motion.div initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }} className="w-full max-w-md bg-slate-900 border-l border-white/10 p-6 overflow-y-auto h-full space-y-6">
-                <div className="flex items-center justify-between border-b border-white/10 pb-4">
-                  <h3 className="text-sm font-bold text-white">Report Metadata Details</h3>
-                  <button onClick={() => setDrawerOpen(false)} className="text-slate-400 hover:text-white cursor-pointer"><FaTimes /></button>
+            <div className="fixed inset-0 z-50 flex justify-end bg-slate-900/40 backdrop-blur-xs">
+              <motion.div initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }} className="w-full max-w-md bg-white border-l border-slate-200 p-6 overflow-y-auto h-full space-y-6 shadow-2xl">
+                <div className="flex items-center justify-between border-b border-slate-200 pb-4">
+                  <h3 className="text-sm font-bold text-slate-900">Report Metadata Details</h3>
+                  <button onClick={() => setDrawerOpen(false)} className="text-slate-400 hover:text-slate-700 cursor-pointer"><FaTimes /></button>
                 </div>
 
                 <div className="space-y-4 text-xs">
-                  <div className="p-4 rounded-xl bg-white/5 border border-white/10 flex items-center space-x-4">
-                    <FaFolder className="text-4xl text-cyan-400" />
+                  <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 flex items-center space-x-4">
+                    <FaFolder className="text-4xl text-blue-700" />
                     <div>
-                      <div className="font-mono text-white font-bold">{selectedReport.id}</div>
-                      <div className="text-slate-300 font-semibold">{selectedReport.title}</div>
-                      <div className="text-[10px] text-slate-400">{selectedReport.type}</div>
+                      <div className="font-mono text-blue-700 font-bold">{selectedReport.id}</div>
+                      <div className="text-slate-900 font-semibold">{selectedReport.title}</div>
+                      <div className="text-[10px] text-slate-500">{selectedReport.type}</div>
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-3 text-slate-300">
-                    <div className="p-3 rounded-lg bg-black/40">
-                      <span className="text-slate-500 text-[10px] block">Generated By</span>
-                      <span>{selectedReport.author}</span>
+                  <div className="grid grid-cols-2 gap-3 text-slate-700">
+                    <div className="p-3 rounded-lg bg-slate-50 border border-slate-200">
+                      <span className="text-slate-500 text-[10px] block font-medium">Generated By</span>
+                      <span className="text-slate-900 font-semibold">{selectedReport.author}</span>
                     </div>
-                    <div className="p-3 rounded-lg bg-black/40">
-                      <span className="text-slate-500 text-[10px] block">File Format</span>
-                      <span className="font-mono text-purple-300">{selectedReport.format} ({selectedReport.size})</span>
+                    <div className="p-3 rounded-lg bg-slate-50 border border-slate-200">
+                      <span className="text-slate-500 text-[10px] block font-medium">File Format</span>
+                      <span className="font-mono text-amber-700 font-bold">{selectedReport.format} ({selectedReport.size})</span>
                     </div>
                   </div>
 
-                  <button onClick={() => alert(`Downloading ${selectedReport.title}...`)} className="w-full py-2.5 rounded-xl bg-gradient-to-r from-purple-600 to-blue-600 text-white font-semibold flex items-center justify-center space-x-2 cursor-pointer">
+                  <button onClick={() => alert(`Downloading ${selectedReport.title}...`)} className="w-full py-2.5 rounded-xl bg-gradient-to-r from-blue-700 to-[#002855] hover:opacity-95 text-white font-semibold flex items-center justify-center space-x-2 cursor-pointer shadow-md shadow-blue-900/10">
                     <FaDownload />
                     <span>Download File ({selectedReport.format})</span>
                   </button>
                 </div>
 
-                <button onClick={() => setDrawerOpen(false)} className="w-full py-2.5 rounded-xl bg-white/10 text-white text-xs font-semibold cursor-pointer">
+                <button onClick={() => setDrawerOpen(false)} className="w-full py-2.5 rounded-xl bg-slate-100 text-slate-700 text-xs font-semibold cursor-pointer hover:bg-slate-200">
                   Close Drawer
                 </button>
               </motion.div>
@@ -805,9 +806,9 @@ export default function Reports() {
         </AnimatePresence>
 
         {/* FOOTER */}
-        <footer className="mt-auto py-6 px-8 border-t border-white/10 bg-black/40 backdrop-blur-md flex flex-col sm:flex-row items-center justify-between text-xs text-slate-500 gap-4">
-          <div>Export Engine Status: <span className="font-mono text-emerald-400">PDF/XLSX Renderer Ready</span> | Firebase Archive Connected</div>
-          <div>Powered by React, Node.js, Express, jsPDF & Python XGBoost</div>
+        <footer className="mt-auto py-4 px-6 sm:px-8 border-t border-slate-200 bg-white flex flex-col sm:flex-row items-center justify-between text-xs text-slate-500 gap-2">
+          <div>Export Engine Status: <span className="font-mono text-emerald-700 font-semibold">PDF/XLSX Renderer Ready</span> | Firebase Archive Connected</div>
+          <div>Indian Railways Track Telemetry Platform • RDSO Compliant</div>
         </footer>
 
       </div>

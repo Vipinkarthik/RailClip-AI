@@ -10,7 +10,7 @@ import {
   FaFolder, FaMicrochip, FaExclamationTriangle, FaCheckCircle, 
   FaTools, FaCalendarAlt, FaBuilding, FaIndustry, FaCheck,
   FaArrowRight, FaLayerGroup, FaHistory, FaInfoCircle,
-  FaRobot, FaSlidersH, FaBolt, FaFlask, FaDatabase, FaServer, FaUserPlus
+  FaRobot, FaSlidersH, FaBolt, FaFlask, FaDatabase, FaServer, FaUserPlus, FaTrain
 } from 'react-icons/fa';
 import { 
   ResponsiveContainer, PieChart, Pie, Cell, 
@@ -24,21 +24,10 @@ import {
    Identical background engine to Dashboard.jsx for visual uniformity.
    ========================================================================== */
 function LiquidEther({
-  colors = ['#5227FF', '#FF9FFC', '#B497CF'],
-  mouseForce = 20,
-  cursorSize = 100,
-  isViscous = true,
-  viscous = 30,
-  iterationsViscous = 32,
-  iterationsPoisson = 32,
-  resolution = 0.5,
-  isBounce = false,
-  autoDemo = true,
-  autoSpeed = 0.5,
-  autoIntensity = 2.2,
-  color0 = '#5227FF',
-  color1 = '#FF9FFC',
-  color2 = '#B497CF'
+  autoSpeed = 0.4,
+  color0 = '#0284c7',
+  color1 = '#003366',
+  color2 = '#075985'
 }) {
   const canvasRef = useRef(null);
 
@@ -202,43 +191,36 @@ export default function AIAnalysis() {
   });
 
   return (
-    <div className="relative h-screen bg-[#030712] text-white font-['Poppins',sans-serif] flex overflow-hidden selection:bg-purple-500 selection:text-white">
+    <div className="relative h-screen bg-slate-50 text-slate-900 font-['Poppins',sans-serif] flex overflow-hidden selection:bg-blue-600 selection:text-white">
       
-      {/* 1. WebGL Liquid Ether Canvas Background */}
-      <LiquidEther
-        color0="#5227FF"
-        color1="#FF9FFC"
-        color2="#00D2FF"
-        autoSpeed={0.4}
-      />
-
-      {/* 2. Glow Orbs */}
-      <div className="fixed top-20 left-60 w-96 h-96 bg-purple-600/10 rounded-full filter blur-[150px] pointer-events-none z-0" />
-      <div className="fixed bottom-10 right-10 w-[30rem] h-[30rem] bg-cyan-500/10 rounded-full filter blur-[160px] pointer-events-none z-0" />
-
-      {/* 3. SIDEBAR NAVIGATION */}
+      {/* 1. SIDEBAR NAVIGATION */}
       <motion.aside
         initial={{ width: 260 }}
         animate={{ width: sidebarOpen ? 260 : 80 }}
         transition={{ duration: 0.3 }}
-        className="relative z-30 flex flex-col justify-between border-r border-white/10 bg-black/40 backdrop-blur-2xl min-h-screen shrink-0"
+        className="relative z-30 flex flex-col justify-between border-r border-blue-900/40 bg-[#002244] text-slate-200 min-h-screen shrink-0 shadow-lg"
       >
         <div>
-          <div className="flex items-center gap-3 p-5 border-b border-white/10">
+          <div className="flex items-center gap-3 p-4 border-b border-blue-900/60 bg-[#001b3a]">
             <div className="flex flex-1 items-center space-x-3 min-w-0 overflow-hidden cursor-pointer" onClick={() => navigate('/dashboard')}>
-              <div className="p-2.5 rounded-xl bg-gradient-to-tr from-purple-600 via-blue-600 to-cyan-400 text-white shrink-0 shadow-lg shadow-purple-500/20">
-                <FaQrcode className="text-xl" />
+              <div className="p-2 rounded-xl bg-gradient-to-tr from-[#003366] via-[#004b87] to-[#0284c7] text-amber-300 shrink-0 shadow-md shadow-blue-900/40">
+                <FaTrain className="text-lg" />
               </div>
               {sidebarOpen && (
                 <div className="flex flex-col whitespace-nowrap">
-                  <span className="font-bold text-base bg-gradient-to-r from-white to-purple-300 bg-clip-text text-transparent">
-                    RailClip<span className="text-cyan-400">AI</span>
+                  <span className="font-extrabold text-base text-white tracking-wide">
+                    RailClip<span className="text-blue-400">AI</span>
                   </span>
-                  <span className="text-[9px] text-slate-400 font-mono tracking-widest">PREDICTIVE CENTER</span>
+                  <span className="text-[9px] text-blue-200 font-mono tracking-widest font-semibold">
+                    IR COMMAND CENTER
+                  </span>
                 </div>
               )}
             </div>
-            <button onClick={() => setSidebarOpen(!sidebarOpen)} className="relative z-20 ml-auto flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-white/5 text-slate-300 transition-all hover:bg-white/10 hover:text-white">
+            <button 
+              onClick={() => setSidebarOpen(!sidebarOpen)} 
+              className="relative z-20 ml-auto flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-blue-800/60 bg-blue-900/30 text-blue-200 transition-all hover:bg-blue-800 hover:text-white cursor-pointer"
+            >
               <AnimatePresence mode="wait" initial={false}>
                 <motion.span
                   key={sidebarOpen ? 'close' : 'open'}
@@ -254,7 +236,7 @@ export default function AIAnalysis() {
             </button>
           </div>
 
-          <nav className="p-4 space-y-2">
+          <nav className="p-3.5 space-y-1.5">
             {[
               { label: 'Dashboard', icon: FaChartLine, path: '/dashboard' },
               { label: 'Components', icon: FaQrcode, path: '/components' },
@@ -269,103 +251,124 @@ export default function AIAnalysis() {
                 <button
                   key={item.label}
                   onClick={() => handleNavClick(item.label, item.path)}
-                  className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all font-medium text-xs cursor-pointer ${
+                  className={`w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-xl transition-all font-medium text-xs cursor-pointer ${
                     isActive 
-                      ? 'bg-gradient-to-r from-purple-600 to-blue-600 text-white shadow-lg shadow-purple-600/30' 
-                      : 'text-slate-400 hover:bg-white/5 hover:text-white'
+                      ? 'bg-gradient-to-r from-blue-600 to-[#0284c7] text-white border border-blue-400/40 shadow-md shadow-blue-950/30' 
+                      : 'text-blue-100/80 hover:bg-blue-900/40 hover:text-white'
                   }`}
                 >
-                  <Icon className={`text-base ${isActive ? 'text-white' : 'text-slate-400'}`} />
-                  {sidebarOpen && <span className="whitespace-nowrap">{item.label}</span>}
+                  <Icon className={`text-base ${isActive ? 'text-amber-300' : 'text-blue-300'}`} />
+                  {sidebarOpen && <span className="whitespace-nowrap font-semibold">{item.label}</span>}
                 </button>
               );
             })}
           </nav>
         </div>
 
-        <div className="p-4 border-t border-white/10">
-          <button onClick={() => navigate('/login')} className="w-full flex items-center space-x-3 px-4 py-2.5 rounded-xl text-red-400 hover:bg-red-500/10 text-xs font-medium transition-colors cursor-pointer">
+        <div className="p-4 border-t border-blue-900/60 bg-[#001b3a]">
+          <div className={`p-3 rounded-xl bg-blue-950/60 border border-blue-800/40 ${sidebarOpen ? 'block' : 'hidden'}`}>
+            <div className="flex items-center justify-between text-[11px] text-blue-200 mb-1">
+              <span className="font-medium">XGBoost ML Pipeline</span>
+              <span className="text-emerald-400 font-mono font-bold">ACTIVE</span>
+            </div>
+            <div className="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
+              <div className="bg-gradient-to-r from-blue-400 to-cyan-400 h-full w-[99%]" />
+            </div>
+            <div className="mt-2 text-[10px] text-blue-300 font-mono">Fatigue Degradation Index</div>
+          </div>
+          <button 
+            onClick={() => navigate('/login')} 
+            className="w-full mt-3 flex items-center space-x-3 px-3 py-2 rounded-xl text-rose-300 hover:bg-rose-900/20 text-xs font-medium transition-colors cursor-pointer"
+          >
             <FaSignOutAlt className="text-sm" />
             {sidebarOpen && <span>Disconnect Session</span>}
           </button>
         </div>
       </motion.aside>
 
-      {/* 4. MAIN WORKSPACE */}
-      <div className="flex-1 flex flex-col z-20 min-w-0 overflow-y-auto scroll-smooth" style={{ scrollBehavior: 'smooth' }}>
+      {/* 2. MAIN WORKSPACE */}
+      <div className="flex-1 flex flex-col z-20 min-w-0 overflow-y-auto scroll-smooth bg-slate-50" style={{ scrollBehavior: 'smooth' }}>
+
+        {/* TOP INDIAN RAILWAYS BANNER STRIP */}
+        <div className="bg-[#002855] text-white text-[11px] sm:text-xs py-1.5 px-6 sm:px-8 border-b border-blue-900/60 flex items-center justify-between">
+          <div className="flex items-center space-x-2 sm:space-x-3">
+            <span className="font-bold tracking-wide text-amber-300">भारतीय रेल</span>
+            <span className="text-blue-300">|</span>
+            <span className="font-bold text-white">INDIAN RAILWAYS</span>
+            <span className="hidden md:inline text-blue-200 font-normal">• Ministry of Railways, Government of India</span>
+          </div>
+          <div className="flex items-center space-x-3 font-mono text-[10.5px] text-blue-200">
+            <span className="text-amber-300 font-semibold">{districtOfficer.subtitle}</span>
+            <span className="text-blue-400">|</span>
+            <span className="text-emerald-400">BROAD GAUGE 1676mm</span>
+          </div>
+        </div>
 
         {/* HEADER NAVBAR */}
-        <header className="sticky top-0 z-30 px-8 py-4 bg-black/40 backdrop-blur-xl border-b border-white/10 flex items-center justify-between">
+        <header className="sticky top-0 z-30 px-6 sm:px-8 py-3.5 bg-white/95 backdrop-blur-md border-b border-slate-200 flex items-center justify-between shadow-xs">
           <div>
-            <h1 className="text-lg font-bold text-white flex items-center gap-2">
-              AI Maintenance Analysis
-              <span className="px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 text-[10px] font-mono border border-purple-500/30">
+            <h1 className="text-base sm:text-lg font-bold text-slate-900 flex items-center gap-2">
+              <span>Predictive Fastener AI Telemetry</span>
+              <span className="px-2 py-0.5 rounded-full bg-blue-100 text-blue-800 text-[10px] font-mono font-bold border border-blue-200">
                 XGBOOST ENGINE v2.4
               </span>
             </h1>
-            <p className="text-xs text-slate-400 font-light">Predictive Maintenance and Intelligent Railway Asset Monitoring</p>
+            <p className="text-xs text-slate-500 font-normal">Machine Learning Toe-Load Degradation & Fatigue Forecasting across {districtOfficer.subtitle}</p>
           </div>
 
           <div className="flex items-center space-x-4">
-            <div className="relative hidden md:block">
-              <FaSearch className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500 text-xs" />
-              <input 
-                type="text" 
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search AI Predictions..."
-                className="pl-9 pr-4 py-2 w-64 rounded-xl bg-black/50 border border-white/10 text-white placeholder:text-slate-600 text-xs focus:outline-none focus:border-purple-500 transition-all"
-              />
-            </div>
-
-            <button className="relative p-2.5 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 text-slate-300 transition-colors">
-              <FaBell className="text-sm" />
-              <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-cyan-400 animate-ping" />
+            <button className="relative p-2.5 rounded-xl bg-slate-100 border border-slate-200 hover:bg-slate-200 text-slate-700 transition-colors cursor-pointer">
+              <FaBell className="text-sm text-slate-700" />
+              <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-amber-500 animate-ping" />
             </button>
 
-            <div className="hidden lg:flex items-center space-x-2 px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-xs font-mono text-slate-300">
-              <span className="w-2 h-2 rounded-full bg-emerald-400" />
+            <div className="hidden lg:flex items-center space-x-2 px-3 py-2 rounded-xl bg-slate-100 border border-slate-200 text-xs font-mono text-slate-700 font-semibold">
+              <span className="w-2 h-2 rounded-full bg-emerald-500" />
               <span>INFERENCE: 14ms</span>
             </div>
 
-            <div className="flex items-center space-x-3 pl-3 border-l border-white/10">
-              <FaUserCircle className="text-2xl text-purple-400" />
+            <div className="flex items-center space-x-3 pl-3 border-l border-slate-200">
+              <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-[#003366] to-[#0284c7] text-white flex items-center justify-center font-bold text-xs shadow-sm">
+                <FaTrain className="text-amber-300" />
+              </div>
               <div className="hidden sm:flex flex-col text-left">
-                <span className="text-xs font-medium text-white leading-none">{districtOfficer.title}</span>
-                <span className="text-[10px] text-slate-400">{districtOfficer.subtitle}</span>
+                <span className="text-xs font-bold text-slate-900 leading-none">{districtOfficer.title}</span>
+                <span className="text-[10px] text-slate-500 font-medium mt-0.5">{districtOfficer.subtitle}</span>
               </div>
             </div>
           </div>
         </header>
 
         {/* WORKSPACE BODY */}
-        <main className="p-8 space-y-8 max-w-7xl w-full mx-auto">
+        <main className="p-6 sm:p-8 space-y-6 max-w-7xl w-full mx-auto">
 
           {/* AI SMART ASSISTANT HIGHLIGHT BANNER */}
           <motion.div 
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="p-5 rounded-2xl bg-gradient-to-r from-purple-900/40 via-blue-900/30 to-black border border-purple-500/30 backdrop-blur-xl relative overflow-hidden"
+            className="p-5 rounded-2xl bg-gradient-to-r from-[#002855] via-[#003366] to-[#004b87] text-white border border-blue-900/60 shadow-md relative overflow-hidden"
           >
             <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
               <div className="flex items-start space-x-4">
-                <div className="p-3 rounded-2xl bg-purple-600/20 border border-purple-500/40 text-cyan-400 text-xl shrink-0 mt-1 md:mt-0">
-                  <FaRobot className="animate-bounce" />
+                <div className="p-3 rounded-2xl bg-white/10 border border-white/20 text-amber-300 text-xl shrink-0 mt-1 md:mt-0">
+                  <FaBrain className="animate-pulse" />
                 </div>
                 <div>
                   <h2 className="text-sm font-bold text-white flex items-center gap-2">
-                    Python AI Model Diagnostic Insights
-                    <span className="text-[10px] px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 font-mono">XGBoost Pickle Loaded</span>
+                    AI Model Diagnostic Insights
+                    <span className="text-[10px] px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-mono font-bold border border-emerald-400/30">
+                      XGBoost Model Active
+                    </span>
                   </h2>
-                  <p className="text-xs text-slate-300 mt-1 leading-relaxed">
-                    "23 railway clips require maintenance within the next 7 days. System-wide health score improved by <strong className="text-emerald-400">+12%</strong> post-tightening cycle. Critical component failures reduced by <strong className="text-cyan-400">18%</strong>."
+                  <p className="text-xs text-blue-100 mt-1 leading-relaxed">
+                    "23 elastic rail clips require torque recalibration within the next 7 days. Overall fastener integrity index is <strong className="text-emerald-300">98.2%</strong> across {districtOfficer.subtitle}."
                   </p>
                 </div>
               </div>
               <button 
                 onClick={handleRefreshInference} 
                 disabled={isRefreshingModel}
-                className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-purple-600 to-cyan-500 text-white text-xs font-semibold shadow-lg shadow-purple-600/30 hover:opacity-90 shrink-0 flex items-center space-x-2 cursor-pointer"
+                className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-700 hover:to-amber-700 text-white text-xs font-bold shadow-lg shadow-orange-600/30 shrink-0 flex items-center space-x-2 cursor-pointer transition-all"
               >
                 <FaSync className={isRefreshingModel ? 'animate-spin' : ''} />
                 <span>{isRefreshingModel ? 'Running Model...' : 'Re-run Inference'}</span>
@@ -376,87 +379,87 @@ export default function AIAnalysis() {
           {/* 1. TOP OVERVIEW CARDS */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
             {[
-              { title: 'Avg Health Score', count: '92.4', trend: '+1.8', isPositive: true, icon: FaChartLine, color: 'from-blue-600 to-cyan-400' },
-              { title: 'Prediction Accuracy', count: '98.2%', trend: '+0.4%', isPositive: true, icon: FaCheckCircle, color: 'from-emerald-600 to-teal-400' },
-              { title: 'High Risk Clips', count: '27', trend: '-3', isPositive: true, icon: FaExclamationTriangle, color: 'from-red-600 to-rose-400' },
-              { title: 'Low Risk Clips', count: '5,210', trend: '+98%', isPositive: true, icon: FaShieldAlt, color: 'from-purple-600 to-indigo-400' },
-              { title: 'Predictions Today', count: '5,842', trend: 'Live Sync', isPositive: true, icon: FaBrain, color: 'from-cyan-600 to-blue-500' },
-              { title: 'Model Confidence', count: '99.1%', trend: 'Optimal', isPositive: true, icon: FaBolt, color: 'from-amber-600 to-yellow-400' },
+              { title: 'Avg Health Score', count: '92.4', trend: '+1.8', isPositive: true, icon: FaChartLine, color: 'from-[#003366] to-[#0284c7]' },
+              { title: 'Prediction Accuracy', count: '98.2%', trend: '+0.4%', isPositive: true, icon: FaCheckCircle, color: 'from-emerald-700 to-emerald-500' },
+              { title: 'High Risk Clips', count: '27', trend: '-3', isPositive: true, icon: FaExclamationTriangle, color: 'from-rose-700 to-red-500' },
+              { title: 'Low Risk Clips', count: '5,210', trend: '+98%', isPositive: true, icon: FaShieldAlt, color: 'from-blue-700 to-indigo-600' },
+              { title: 'Predictions Today', count: '5,842', trend: 'Live Sync', isPositive: true, icon: FaBrain, color: 'from-cyan-700 to-blue-600' },
+              { title: 'Model Confidence', count: '99.1%', trend: 'Optimal', isPositive: true, icon: FaBolt, color: 'from-amber-600 to-yellow-500' },
             ].map((stat, idx) => {
               const Icon = stat.icon;
               return (
-                <div key={idx} className="p-5 rounded-2xl bg-slate-900/50 border border-white/10 backdrop-blur-xl hover:border-purple-500/40 transition-all">
+                <div key={idx} className="p-5 rounded-2xl bg-white border border-slate-200/90 shadow-sm hover:shadow-md transition-all">
                   <div className="flex items-center justify-between mb-3">
-                    <div className={`p-2.5 rounded-xl bg-gradient-to-tr ${stat.color} text-white shadow-md`}>
+                    <div className={`p-2.5 rounded-xl bg-gradient-to-tr ${stat.color} text-white shadow-sm`}>
                       <Icon className="text-base" />
                     </div>
-                    <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded ${
-                      stat.isPositive ? 'bg-emerald-500/15 text-emerald-400' : 'bg-red-500/15 text-red-400'
+                    <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded font-bold ${
+                      stat.isPositive ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-rose-50 text-rose-700 border border-rose-200'
                     }`}>
                       {stat.trend}
                     </span>
                   </div>
-                  <div className="text-2xl font-bold text-white mb-1">{stat.count}</div>
-                  <div className="text-[11px] text-slate-400 truncate">{stat.title}</div>
+                  <div className="text-2xl font-black text-slate-900 tracking-tight mb-1 font-mono">{stat.count}</div>
+                  <div className="text-[11px] text-slate-500 font-medium truncate">{stat.title}</div>
                 </div>
               );
             })}
           </div>
 
           {/* 2. AI MODEL METRICS & FEATURE IMPORTANCE SECTION */}
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
             
             {/* AI Engine Status Card (4 cols) */}
-            <div className="lg:col-span-4 p-6 rounded-2xl bg-slate-900/50 border border-white/10 backdrop-blur-xl flex flex-col justify-between">
+            <div className="lg:col-span-4 p-6 rounded-2xl bg-white border border-slate-200/90 shadow-sm flex flex-col justify-between">
               <div>
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-sm font-bold text-white flex items-center gap-2">
-                    <FaServer className="text-cyan-400" />
+                <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100">
+                  <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                    <FaServer className="text-blue-600" />
                     AI Model Engine
                   </h3>
-                  <span className="text-[10px] px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 font-mono">
+                  <span className="text-[10px] px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 font-mono font-bold border border-emerald-200">
                     ONLINE
                   </span>
                 </div>
 
-                <div className="space-y-3 text-xs">
-                  <div className="flex justify-between p-2.5 rounded-xl bg-black/40 border border-white/5">
-                    <span className="text-slate-400">Model Framework:</span>
-                    <span className="font-mono text-cyan-300">XGBoost Regressor</span>
+                <div className="space-y-2.5 text-xs">
+                  <div className="flex justify-between p-2.5 rounded-xl bg-slate-50 border border-slate-200">
+                    <span className="text-slate-600">Model Framework:</span>
+                    <span className="font-mono text-blue-700 font-semibold">XGBoost Regressor</span>
                   </div>
-                  <div className="flex justify-between p-2.5 rounded-xl bg-black/40 border border-white/5">
-                    <span className="text-slate-400">Model Version:</span>
-                    <span className="font-mono text-white">v2.4.0-prod</span>
+                  <div className="flex justify-between p-2.5 rounded-xl bg-slate-50 border border-slate-200">
+                    <span className="text-slate-600">Model Version:</span>
+                    <span className="font-mono text-slate-900 font-semibold">v2.4.0-prod</span>
                   </div>
-                  <div className="flex justify-between p-2.5 rounded-xl bg-black/40 border border-white/5">
-                    <span className="text-slate-400">Last Training Date:</span>
-                    <span className="font-mono text-slate-300">2026-07-01</span>
+                  <div className="flex justify-between p-2.5 rounded-xl bg-slate-50 border border-slate-200">
+                    <span className="text-slate-600">Last Training Date:</span>
+                    <span className="font-mono text-slate-700 font-medium">2026-07-01</span>
                   </div>
-                  <div className="flex justify-between p-2.5 rounded-xl bg-black/40 border border-white/5">
-                    <span className="text-slate-400">Total Vectors Evaluated:</span>
-                    <span className="font-mono text-purple-300 font-bold">5,842 Clips</span>
+                  <div className="flex justify-between p-2.5 rounded-xl bg-slate-50 border border-slate-200">
+                    <span className="text-slate-600">Total Vectors Evaluated:</span>
+                    <span className="font-mono text-blue-700 font-bold">5,842 Clips</span>
                   </div>
-                  <div className="flex justify-between p-2.5 rounded-xl bg-black/40 border border-white/5">
-                    <span className="text-slate-400">Inference Latency:</span>
-                    <span className="font-mono text-emerald-400">14 ms</span>
+                  <div className="flex justify-between p-2.5 rounded-xl bg-slate-50 border border-slate-200">
+                    <span className="text-slate-600">Inference Latency:</span>
+                    <span className="font-mono text-emerald-700 font-bold">14 ms</span>
                   </div>
                 </div>
               </div>
 
-              <div className="mt-4 pt-3 border-t border-white/5 flex items-center justify-between text-[11px] text-slate-500">
-                <span>Pickle File: <strong className="text-slate-300">model_v2.pkl</strong></span>
-                <span>Accuracy: <strong className="text-emerald-400">98.2%</strong></span>
+              <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-500">
+                <span>Pickle File: <strong className="text-slate-700">model_v2.pkl</strong></span>
+                <span>Accuracy: <strong className="text-emerald-700 font-bold">98.2%</strong></span>
               </div>
             </div>
 
             {/* Feature Importance Horizontal Chart (8 cols) */}
-            <div className="lg:col-span-8 p-6 rounded-2xl bg-slate-900/50 border border-white/10 backdrop-blur-xl">
-              <div className="flex items-center justify-between mb-4">
+            <div className="lg:col-span-8 p-6 rounded-2xl bg-white border border-slate-200/90 shadow-sm">
+              <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100">
                 <div>
-                  <h3 className="text-sm font-bold text-white">XGBoost Feature Importance Weights</h3>
-                  <p className="text-[11px] text-slate-400">Key track factors influencing AI failure probability predictions</p>
+                  <h3 className="text-sm font-bold text-slate-900">XGBoost Feature Importance Weights</h3>
+                  <p className="text-[11px] text-slate-500">Key track factors influencing AI failure probability predictions</p>
                 </div>
-                <span className="text-[10px] font-mono text-cyan-400 px-2 py-0.5 rounded bg-cyan-500/10">
+                <span className="text-[10px] font-mono text-blue-700 px-2 py-0.5 rounded bg-blue-50 border border-blue-200 font-bold">
                   SHAP VALUES
                 </span>
               </div>
@@ -465,12 +468,12 @@ export default function AIAnalysis() {
                 {mockFeatureImportance.map((feat, idx) => (
                   <div key={idx} className="space-y-1">
                     <div className="flex justify-between text-xs">
-                      <span className="text-slate-300 font-medium">{feat.feature}</span>
-                      <span className="font-mono text-cyan-400 font-bold">{feat.importance}%</span>
+                      <span className="text-slate-700 font-medium">{feat.feature}</span>
+                      <span className="font-mono text-blue-700 font-bold">{feat.importance}%</span>
                     </div>
-                    <div className="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
+                    <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden border border-slate-200">
                       <div 
-                        className="bg-gradient-to-r from-purple-500 to-cyan-400 h-full rounded-full transition-all duration-1000"
+                        className="bg-gradient-to-r from-blue-600 to-[#0284c7] h-full rounded-full transition-all duration-1000"
                         style={{ width: `${feat.importance * 2}%` }}
                       />
                     </div>
@@ -482,18 +485,18 @@ export default function AIAnalysis() {
           </div>
 
           {/* 3. AI PREDICTION DATA TABLE */}
-          <div className="p-6 rounded-2xl bg-slate-900/50 border border-white/10 backdrop-blur-xl">
+          <div className="p-6 rounded-2xl bg-white border border-slate-200/90 shadow-sm">
             <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-6">
               <div>
-                <h3 className="text-sm font-bold text-white">AI Maintenance Priority Predictions</h3>
-                <p className="text-[11px] text-slate-400">Real-time risk classification generated for field operations</p>
+                <h3 className="text-sm font-bold text-slate-900">AI Maintenance Priority Predictions</h3>
+                <p className="text-[11px] text-slate-500">Real-time risk classification generated for field operations</p>
               </div>
 
               <div className="flex flex-wrap items-center gap-3">
                 <select 
                   value={priorityFilter} 
                   onChange={(e) => setPriorityFilter(e.target.value)}
-                  className="px-3 py-1.5 rounded-xl bg-black/40 border border-white/10 text-xs text-slate-300 focus:outline-none"
+                  className="px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-300 text-xs text-slate-700 focus:outline-none focus:border-blue-600"
                 >
                   <option value="All">All Priorities</option>
                   <option value="Critical">Critical</option>
@@ -501,7 +504,7 @@ export default function AIAnalysis() {
                   <option value="Medium">Medium</option>
                   <option value="Low">Low</option>
                 </select>
-                <button onClick={() => alert('Exporting AI Predictions CSV...')} className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-purple-600 to-blue-600 text-white text-xs font-medium flex items-center space-x-2 cursor-pointer">
+                <button onClick={() => alert('Exporting AI Predictions CSV...')} className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-[#003366] to-[#0055a5] hover:from-[#002244] hover:to-[#004080] text-white text-xs font-semibold flex items-center space-x-2 cursor-pointer shadow-xs">
                   <FaDownload className="text-[10px]" />
                   <span>Export Predictions</span>
                 </button>
@@ -509,48 +512,48 @@ export default function AIAnalysis() {
             </div>
 
             {/* Table */}
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto rounded-xl border border-slate-200">
               <table className="w-full text-left text-xs">
-                <thead>
-                  <tr className="border-b border-white/10 text-slate-400 font-mono uppercase text-[10px] tracking-wider">
-                    <th className="pb-3 px-4">QR ID</th>
-                    <th className="pb-3 px-4">Component</th>
-                    <th className="pb-3 px-4">Location</th>
-                    <th className="pb-3 px-4">Health Score</th>
-                    <th className="pb-3 px-4">Priority</th>
-                    <th className="pb-3 px-4">Failure Prob.</th>
-                    <th className="pb-3 px-4">Remaining Life</th>
-                    <th className="pb-3 px-4">AI Recommendation</th>
-                    <th className="pb-3 px-4 text-right">Action</th>
+                <thead className="bg-slate-50 text-slate-600 font-mono uppercase text-[10px] tracking-wider border-b border-slate-200">
+                  <tr>
+                    <th className="py-3 px-4">QR ID</th>
+                    <th className="py-3 px-4">Component</th>
+                    <th className="py-3 px-4">Location</th>
+                    <th className="py-3 px-4">Health Score</th>
+                    <th className="py-3 px-4">Priority</th>
+                    <th className="py-3 px-4">Failure Prob.</th>
+                    <th className="py-3 px-4">Remaining Life</th>
+                    <th className="py-3 px-4">AI Recommendation</th>
+                    <th className="py-3 px-4 text-right">Action</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-white/5 text-slate-300">
+                <tbody className="divide-y divide-slate-100 text-slate-700">
                   {filteredPredictions.map((row) => (
-                    <tr key={row.id} className="hover:bg-white/5 transition-colors">
-                      <td className="py-3.5 px-4 font-mono text-cyan-400 font-semibold">{row.qrId}</td>
-                      <td className="py-3.5 px-4 font-medium text-white">{row.compId}</td>
-                      <td className="py-3.5 px-4 text-slate-400">{row.station}</td>
-                      <td className="py-3.5 px-4 font-bold">
-                        <span className={row.health > 80 ? 'text-emerald-400' : row.health > 50 ? 'text-amber-400' : 'text-red-400'}>
+                    <tr key={row.id} className="hover:bg-blue-50/40 transition-colors">
+                      <td className="py-3.5 px-4 font-mono text-blue-700 font-semibold">{row.qrId}</td>
+                      <td className="py-3.5 px-4 font-medium text-slate-900">{row.compId}</td>
+                      <td className="py-3.5 px-4 text-slate-600">{row.station}</td>
+                      <td className="py-3.5 px-4 font-bold font-mono">
+                        <span className={row.health > 80 ? 'text-emerald-700' : row.health > 50 ? 'text-amber-700' : 'text-rose-700'}>
                           {row.health}/100
                         </span>
                       </td>
                       <td className="py-3.5 px-4">
                         <span className={`px-2 py-0.5 rounded text-[10px] font-semibold ${
-                          row.priority === 'Low' ? 'bg-emerald-500/15 text-emerald-400' :
-                          row.priority === 'Medium' ? 'bg-amber-500/15 text-amber-400' :
-                          row.priority === 'High' ? 'bg-orange-500/15 text-orange-400' : 'bg-red-500/15 text-red-400 animate-pulse'
+                          row.priority === 'Low' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' :
+                          row.priority === 'Medium' ? 'bg-amber-50 text-amber-700 border border-amber-200' :
+                          row.priority === 'High' ? 'bg-orange-50 text-orange-700 border border-orange-200' : 'bg-rose-50 text-rose-700 border border-rose-200'
                         }`}>
                           {row.priority}
                         </span>
                       </td>
-                      <td className="py-3.5 px-4 font-mono text-slate-300">{row.probability}</td>
-                      <td className="py-3.5 px-4 font-mono text-purple-300">{row.remLife}</td>
-                      <td className="py-3.5 px-4 text-slate-400 max-w-xs truncate">{row.recommendation}</td>
+                      <td className="py-3.5 px-4 font-mono text-slate-700">{row.probability}</td>
+                      <td className="py-3.5 px-4 font-mono text-blue-700 font-medium">{row.remLife}</td>
+                      <td className="py-3.5 px-4 text-slate-600 max-w-xs truncate">{row.recommendation}</td>
                       <td className="py-3.5 px-4 text-right">
                         <button 
                           onClick={() => { setSelectedPrediction(row); setDrawerOpen(true); }}
-                          className="px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-cyan-400 text-[11px] font-medium cursor-pointer"
+                          className="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-blue-50 text-blue-700 text-[11px] font-semibold border border-slate-200 cursor-pointer transition-all"
                         >
                           Details
                         </button>
@@ -563,29 +566,29 @@ export default function AIAnalysis() {
           </div>
 
           {/* 4. RADAR & RECHARTS RISK DISTRIBUTION ROW */}
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
             
             {/* Component Radar Health Analysis (6 cols) */}
-            <div className="lg:col-span-6 p-6 rounded-2xl bg-slate-900/50 border border-white/10 backdrop-blur-xl">
-              <h3 className="text-sm font-bold text-white mb-1">Clip Structural Radar Vectors</h3>
-              <p className="text-[11px] text-slate-400 mb-4">Multidimensional telemetry health comparison</p>
+            <div className="lg:col-span-6 p-6 rounded-2xl bg-white border border-slate-200/90 shadow-sm">
+              <h3 className="text-sm font-bold text-slate-900 mb-1">Clip Structural Radar Vectors</h3>
+              <p className="text-[11px] text-slate-500 mb-4">Multidimensional telemetry health comparison</p>
               <div className="h-64 w-full flex items-center justify-center">
                 <ResponsiveContainer width="100%" height="100%">
                   <RadarChart cx="50%" cy="50%" outerRadius="70%" data={mockHealthRadar}>
-                    <PolarGrid stroke="#334155" />
-                    <PolarAngleAxis dataKey="subject" stroke="#94a3b8" fontSize={11} />
-                    <PolarRadiusAxis stroke="#475569" fontSize={10} />
-                    <Radar name="Clip CLP-001" dataKey="A" stroke="#00D2FF" fill="#00D2FF" fillOpacity={0.4} />
-                    <Tooltip contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', borderRadius: '12px', fontSize: '12px' }} />
+                    <PolarGrid stroke="#cbd5e1" />
+                    <PolarAngleAxis dataKey="subject" stroke="#475569" fontSize={11} />
+                    <PolarRadiusAxis stroke="#94a3b8" fontSize={10} />
+                    <Radar name="Clip CLP-001" dataKey="A" stroke="#0284c7" fill="#0284c7" fillOpacity={0.3} />
+                    <Tooltip contentStyle={{ backgroundColor: '#ffffff', borderColor: '#e2e8f0', borderRadius: '12px', fontSize: '12px' }} />
                   </RadarChart>
                 </ResponsiveContainer>
               </div>
             </div>
 
             {/* Maintenance Priority Distribution Pie Chart (6 cols) */}
-            <div className="lg:col-span-6 p-6 rounded-2xl bg-slate-900/50 border border-white/10 backdrop-blur-xl">
-              <h3 className="text-sm font-bold text-white mb-1">Risk Priority Classification Breakdown</h3>
-              <p className="text-[11px] text-slate-400 mb-4">Total components categorized by prediction engine</p>
+            <div className="lg:col-span-6 p-6 rounded-2xl bg-white border border-slate-200/90 shadow-sm">
+              <h3 className="text-sm font-bold text-slate-900 mb-1">Risk Priority Classification Breakdown</h3>
+              <p className="text-[11px] text-slate-500 mb-4">Total components categorized by prediction engine</p>
               <div className="h-64 w-full flex items-center justify-center">
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
@@ -594,13 +597,13 @@ export default function AIAnalysis() {
                         <Cell key={`cell-${idx}`} fill={entry.color} />
                       ))}
                     </Pie>
-                    <Tooltip contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', borderRadius: '12px', fontSize: '12px' }} />
+                    <Tooltip contentStyle={{ backgroundColor: '#ffffff', borderColor: '#e2e8f0', borderRadius: '12px', fontSize: '12px' }} />
                   </PieChart>
                 </ResponsiveContainer>
               </div>
-              <div className="flex justify-center space-x-4 text-[11px] text-slate-400 mt-2">
+              <div className="flex justify-center space-x-4 text-[11px] text-slate-600 mt-2">
                 {mockPriorityDist.map((item) => (
-                  <div key={item.name} className="flex items-center space-x-1.5">
+                  <div key={item.name} className="flex items-center space-x-1.5 font-medium">
                     <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: item.color }} />
                     <span>{item.name}</span>
                   </div>
@@ -613,9 +616,9 @@ export default function AIAnalysis() {
           {/* 5. QUICK ACTIONS */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             {[
-              { label: 'Run Full Fleet Diagnostics', icon: FaBrain, color: 'from-purple-600 to-blue-600', path: '/ai-analysis' },
-              { label: 'Register New Track Clip', icon: FaQrcode, color: 'from-cyan-600 to-teal-600', path: '/components' },
-              { label: 'Scan QR Inspection', icon: FaShieldAlt, color: 'from-blue-600 to-indigo-600', path: '/inspections' },
+              { label: 'Run Full Fleet Diagnostics', icon: FaBrain, color: 'from-[#003366] to-[#0055a5]', path: '/ai-analysis' },
+              { label: 'Register New Track Clip', icon: FaQrcode, color: 'from-blue-700 to-indigo-600', path: '/components' },
+              { label: 'Scan QR Inspection', icon: FaShieldAlt, color: 'from-emerald-700 to-teal-600', path: '/inspections' },
               { label: 'Generate Analytical Reports', icon: FaFolder, color: 'from-slate-700 to-slate-800', path: '/reports' },
             ].map((btn, idx) => {
               const Icon = btn.icon;
@@ -623,7 +626,7 @@ export default function AIAnalysis() {
                 <button 
                   key={idx}
                   onClick={() => navigate(btn.path)}
-                  className={`p-4 rounded-2xl bg-gradient-to-r ${btn.color} text-white font-medium text-xs shadow-lg flex items-center justify-center space-x-3 hover:opacity-90 transition-all cursor-pointer`}
+                  className={`p-4 rounded-2xl bg-gradient-to-r ${btn.color} text-white font-semibold text-xs shadow-sm flex items-center justify-center space-x-3 hover:opacity-95 transition-all cursor-pointer`}
                 >
                   <Icon className="text-sm" />
                   <span>{btn.label}</span>
@@ -637,54 +640,54 @@ export default function AIAnalysis() {
         {/* 6. PREDICTION DETAILS DRAWER */}
         <AnimatePresence>
           {drawerOpen && selectedPrediction && (
-            <div className="fixed inset-0 z-50 flex justify-end bg-black/60 backdrop-blur-sm">
+            <div className="fixed inset-0 z-50 flex justify-end bg-slate-900/60 backdrop-blur-xs">
               <motion.div 
                 initial={{ x: '100%' }} 
                 animate={{ x: 0 }} 
                 exit={{ x: '100%' }} 
-                className="w-full max-w-md bg-slate-900 border-l border-white/10 p-6 overflow-y-auto h-full space-y-6"
+                className="w-full max-w-md bg-white border-l border-slate-200 p-6 overflow-y-auto h-full space-y-6 text-slate-900 shadow-2xl"
               >
-                <div className="flex items-center justify-between border-b border-white/10 pb-4">
-                  <h3 className="text-sm font-bold text-white flex items-center gap-2">
-                    <FaBrain className="text-cyan-400" />
+                <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+                  <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                    <FaBrain className="text-blue-600" />
                     AI Prediction Profile
                   </h3>
-                  <button onClick={() => setDrawerOpen(false)} className="text-slate-400 hover:text-white cursor-pointer"><FaTimes /></button>
+                  <button onClick={() => setDrawerOpen(false)} className="text-slate-400 hover:text-slate-700 cursor-pointer"><FaTimes /></button>
                 </div>
 
                 <div className="space-y-4 text-xs">
-                  <div className="p-4 rounded-xl bg-white/5 border border-white/10 flex items-center space-x-4">
-                    <FaQrcode className="text-4xl text-cyan-400" />
+                  <div className="p-4 rounded-xl bg-blue-50/70 border border-blue-100 flex items-center space-x-4">
+                    <FaQrcode className="text-4xl text-blue-700" />
                     <div>
-                      <div className="font-mono text-white font-bold">{selectedPrediction.qrId}</div>
-                      <div className="text-slate-400">ID: {selectedPrediction.compId}</div>
-                      <div className="text-[10px] text-purple-300">{selectedPrediction.section}</div>
+                      <div className="font-mono text-slate-900 font-bold text-sm">{selectedPrediction.qrId}</div>
+                      <div className="text-slate-500">ID: {selectedPrediction.compId}</div>
+                      <div className="text-[10px] text-blue-700 font-medium">{selectedPrediction.section}</div>
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-3 text-slate-300">
-                    <div className="p-3 rounded-lg bg-black/40">
-                      <span className="text-slate-500 text-[10px] block">Calculated Health Score</span>
-                      <span className="text-lg font-bold text-emerald-400">{selectedPrediction.health}/100</span>
+                  <div className="grid grid-cols-2 gap-3 text-slate-700">
+                    <div className="p-3 rounded-lg bg-slate-50 border border-slate-200">
+                      <span className="text-slate-500 text-[10px] block font-semibold">Calculated Health Score</span>
+                      <span className="text-lg font-bold text-emerald-700 font-mono">{selectedPrediction.health}/100</span>
                     </div>
-                    <div className="p-3 rounded-lg bg-black/40">
-                      <span className="text-slate-500 text-[10px] block">Failure Probability</span>
-                      <span className="text-lg font-bold text-cyan-400 font-mono">{selectedPrediction.probability}</span>
+                    <div className="p-3 rounded-lg bg-slate-50 border border-slate-200">
+                      <span className="text-slate-500 text-[10px] block font-semibold">Failure Probability</span>
+                      <span className="text-lg font-bold text-blue-700 font-mono">{selectedPrediction.probability}</span>
                     </div>
                   </div>
 
-                  <div className="p-4 rounded-xl bg-purple-900/20 border border-purple-500/30 space-y-2">
-                    <div className="text-xs font-bold text-white">AI Maintenance Recommendation</div>
-                    <p className="text-slate-300 text-xs leading-relaxed">{selectedPrediction.recommendation}</p>
+                  <div className="p-4 rounded-xl bg-blue-50/70 border border-blue-200 space-y-2">
+                    <div className="text-xs font-bold text-slate-900">AI Maintenance Recommendation</div>
+                    <p className="text-slate-700 text-xs leading-relaxed">{selectedPrediction.recommendation}</p>
                   </div>
 
-                  <div className="p-3 rounded-lg bg-black/40 text-slate-400 space-y-1">
-                    <div>Estimated Remaining Life: <strong className="text-white">{selectedPrediction.remLife}</strong></div>
-                    <div>Prediction Timestamp: <strong className="text-slate-300">{selectedPrediction.date}</strong></div>
+                  <div className="p-3 rounded-lg bg-slate-50 border border-slate-200 text-slate-600 space-y-1">
+                    <div>Estimated Remaining Life: <strong className="text-slate-900">{selectedPrediction.remLife}</strong></div>
+                    <div>Prediction Timestamp: <strong className="text-slate-700 font-mono">{selectedPrediction.date}</strong></div>
                   </div>
                 </div>
 
-                <button onClick={() => setDrawerOpen(false)} className="w-full py-2.5 rounded-xl bg-white/10 text-white text-xs font-semibold cursor-pointer">
+                <button onClick={() => setDrawerOpen(false)} className="w-full py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-semibold cursor-pointer transition-all">
                   Close Prediction Profile
                 </button>
               </motion.div>
@@ -693,9 +696,9 @@ export default function AIAnalysis() {
         </AnimatePresence>
 
         {/* FOOTER */}
-        <footer className="mt-auto py-6 px-8 border-t border-white/10 bg-black/40 backdrop-blur-md flex flex-col sm:flex-row items-center justify-between text-xs text-slate-500 gap-4">
-          <div>AI Engine Status: <span className="font-mono text-emerald-400">XGBoost API Connected</span> | Total Vectors: <span className="font-mono text-slate-300">5,842</span></div>
-          <div>Powered by React, Node.js, Express & Python XGBoost</div>
+        <footer className="mt-auto py-4 px-8 border-t border-slate-200 bg-white text-xs text-slate-500 flex flex-col sm:flex-row items-center justify-between gap-2">
+          <div>AI Engine Status: <span className="font-mono text-emerald-700 font-bold">XGBoost API Connected</span> | Total Vectors: <span className="font-mono text-slate-800 font-semibold">5,842</span></div>
+          <div>Indian Railways Track Telemetry Platform • RDSO Compliant</div>
         </footer>
 
       </div>
