@@ -99,6 +99,7 @@ export default function Login() {
       const storage = rememberMe ? window.localStorage : window.sessionStorage;
 
       storage.setItem('railclip-auth', JSON.stringify(response));
+      storage.setItem('signedIn', 'true');
       if (response.token) {
         setAuthToken(response.token);
       }
@@ -132,8 +133,6 @@ export default function Login() {
               </span>
             </div>
             <div className="flex items-center space-x-4 font-mono text-[10.5px] text-blue-200">
-              <span className="text-emerald-400 font-semibold">RDSO T-3701 COMPLIANT</span>
-              <span className="hidden md:inline text-blue-400">|</span>
               <span className="hidden md:inline text-blue-200">BROAD GAUGE 1676mm</span>
             </div>
           </div>
@@ -162,7 +161,7 @@ export default function Login() {
                     RailClip
                   </span>
                   <span className="font-mono text-[9.5px] font-semibold tracking-wider text-slate-500">
-                    INDIAN RAILWAYS FASTENER TELEMETRY
+                    INDIAN RAILWAYS FASTENER SYSTEM
                   </span>
                 </div>
               </div>
@@ -199,17 +198,17 @@ export default function Login() {
                   Intelligent Elastic Rail Clip Management for <span className="text-[#004b87]">Indian Railways</span>
                 </h1>
                 <p className="max-w-xl text-xs sm:text-sm font-normal leading-relaxed text-slate-600">
-                  Authorised portal for <strong>Senior Section Engineers (P-Way)</strong>, <strong>ADENs</strong>, and <strong>Track Officers</strong> to monitor laser-QR serialized rail clips, predictive toe-load loss analytics, and RDSO safety compliance.
+                  Official login portal for Railway Track Engineers, Officers, and Field Staff.
                 </p>
               </div>
 
               {/* 4 Feature Badges */}
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
                 {[
-                  { icon: <FaBrain className="text-amber-600" />, label: 'XGBoost AI Risk' },
-                  { icon: <FaQrcode className="text-blue-600" />, label: 'Laser QR Coding' },
-                  { icon: <FaMapMarkerAlt className="text-blue-600" />, label: 'GIS GPS Tagging' },
-                  { icon: <FaShieldAlt className="text-emerald-600" />, label: 'RDSO Verified' }
+                  { icon: <FaBrain className="text-amber-600" />, label: 'AI Risk Analysis' },
+                  { icon: <FaQrcode className="text-blue-600" />, label: 'QR Code Scanning' },
+                  { icon: <FaMapMarkerAlt className="text-blue-600" />, label: 'GPS Location Tracking' },
+                  { icon: <FaShieldAlt className="text-emerald-600" />, label: 'Verified Safety' }
                 ].map((item) => (
                   <div
                     key={item.label}
@@ -238,7 +237,7 @@ export default function Login() {
                     { value: '5,842+', label: 'Registered ERC Clips' },
                     { value: '1676 mm', label: 'Broad Gauge Track' },
                     { value: '25.0 T', label: 'Heavy Axle Load' },
-                    { value: '< 12 ms', label: 'Sync Telemetry' }
+                    { value: '< 12 ms', label: 'Sync System' }
                   ].map((stat) => (
                     <div key={stat.label} className="rounded-lg border border-slate-100 bg-slate-50 p-2.5">
                       <div className="text-base sm:text-lg font-black font-mono text-[#003366]">
@@ -382,7 +381,7 @@ export default function Login() {
               <span className="font-semibold text-slate-900">RailClip System</span> • Dedicated Track Fastener Integrity Platform for Indian Railways
             </div>
             <div className="text-slate-500 font-mono">
-              RDSO Spec T-3701 / T-4001 • Broad Gauge 1676mm
+              Broad Gauge 1676mm
             </div>
           </div>
         </footer>

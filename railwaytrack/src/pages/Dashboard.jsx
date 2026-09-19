@@ -153,7 +153,7 @@ export default function Dashboard() {
       id: 'inspections_count',
       title: 'Verified Field Audits',
       count: loading ? '...' : String(inspections.length),
-      subtitle: 'Telemetry logs recorded',
+      subtitle: 'System logs recorded',
       icon: FaTrain,
       color: 'from-cyan-700 to-blue-600',
       path: '/inspections'
@@ -247,10 +247,17 @@ export default function Dashboard() {
             <div className="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
               <div className="bg-gradient-to-r from-blue-400 to-cyan-400 h-full w-[99%]" />
             </div>
-            <div className="mt-2 text-[10px] text-blue-300 font-mono">RDSO T-3701 • 99.9% Accuracy</div>
+            <div className="mt-2 text-[10px] text-blue-300 font-mono">99.9% Accuracy</div>
           </div>
           <button 
-            onClick={() => navigate('/login')} 
+            onClick={() => {
+              try { auth.signOut(); } catch (e) {}
+              window.localStorage.removeItem('signedIn');
+              window.sessionStorage.removeItem('signedIn');
+              window.localStorage.removeItem('railclip-auth');
+              window.sessionStorage.removeItem('railclip-auth');
+              navigate('/login');
+            }} 
             className="w-full mt-3 flex items-center space-x-3 px-3 py-2 rounded-xl text-rose-300 hover:bg-rose-900/20 text-xs font-medium transition-colors cursor-pointer"
           >
             <FaSignOutAlt className="text-sm" />
@@ -287,7 +294,7 @@ export default function Dashboard() {
               </span>
             </h1>
             <p className="text-xs text-slate-500 font-normal">
-              Indian Railways Elastic Rail Clip (ERC) Telemetry & Fastener Integrity
+              Indian Railways Elastic Rail Clip (ERC) & Fastener Integrity
             </p>
           </div>
 
@@ -338,7 +345,7 @@ export default function Dashboard() {
                 </div>
                 <div>
                   <h2 className="text-sm font-bold text-white flex items-center gap-2">
-                    Railway Clip Telemetry Directives
+                    Railway Clip System Directives
                     <span className="text-[10px] px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-mono font-bold border border-emerald-400/30">
                       {summary.activeModel}
                     </span>
@@ -350,7 +357,7 @@ export default function Dashboard() {
                       </>
                     ) : (
                       <>
-                        All evaluated railway clips are operating within nominal RDSO elasticity tolerance limits. Composite fleet health index is <strong className="text-emerald-300 font-bold">{summary.avgHealth}%</strong>.
+                        All evaluated railway clips are operating within nominal elasticity tolerance limits. Composite fleet health index is <strong className="text-emerald-300 font-bold">{summary.avgHealth}%</strong>.
                       </>
                     )}
                   </p>
@@ -360,7 +367,7 @@ export default function Dashboard() {
                 onClick={() => navigate('/ai-analysis')} 
                 className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-700 hover:to-amber-700 text-white text-xs font-bold shadow-lg shadow-orange-600/30 shrink-0 whitespace-nowrap cursor-pointer"
               >
-                View Telemetry Analytics
+                View System Analytics
               </button>
             </div>
           </motion.div>

@@ -3,8 +3,8 @@ import { jsPDF } from 'jspdf';
 /**
  * Generates a colorful, professional single-page PDF report for RailClip.
  *
- * @param {Object} clipData - Telemetry and AI prediction data for the clip or fleet.
- * @param {Object} summary - Overall fleet telemetry summary.
+ * @param {Object} clipData - Prediction data for the clip or fleet.
+ * @param {Object} summary - Overall fleet summary.
  */
 export function generateAiReportPdf(clipData, summary = {}) {
 	const doc = new jsPDF({
@@ -68,15 +68,14 @@ export function generateAiReportPdf(clipData, summary = {}) {
 	doc.setTextColor(255, 255, 255);
 	doc.text('RailClip', 36, 15);
 
-
 	doc.setFontSize(8.5);
 	doc.setTextColor(254, 240, 138); // Soft Gold
-	doc.text('INDIAN RAILWAYS • PERMANENT WAY FASTENER TELEMETRY', 36, 21);
+	doc.text('INDIAN RAILWAYS • PERMANENT WAY FASTENER SYSTEM', 36, 21);
 
 	doc.setFont('helvetica', 'normal');
 	doc.setFontSize(7);
 	doc.setTextColor(203, 213, 225);
-	doc.text('Predictive Track Clip Fatigue & Maintenance Priority Diagnostic Report • RDSO Compliant', 36, 27);
+	doc.text('Predictive Track Clip Fatigue & Maintenance Priority Diagnostic Report', 36, 27);
 
 	// Top Right Badge
 	doc.setFillColor(15, 23, 42);
@@ -139,7 +138,6 @@ export function generateAiReportPdf(clipData, summary = {}) {
 		doc.setLineWidth(0.2);
 		doc.roundedRect(x, kpiY, cardW, cardH, 2, 2, 'S');
 
-		// Left accent color strip
 		doc.setFillColor(...kpi.color);
 		doc.rect(x, kpiY, 2.5, cardH, 'F');
 
@@ -154,12 +152,12 @@ export function generateAiReportPdf(clipData, summary = {}) {
 		doc.text(kpi.val, x + 5.5, kpiY + 16);
 	});
 
-	// 4. TELEMETRY & PHYSICAL PROFILE SECTION
+	// 4. COMPONENT & PHYSICAL PROFILE SECTION
 	const secY = 74;
 	doc.setFont('helvetica', 'bold');
 	doc.setFontSize(10);
 	doc.setTextColor(0, 40, 85);
-	doc.text('1. Component Profile & Field Telemetry Vector', 12, secY);
+	doc.text('1. Component Profile & Field Data Vector', 12, secY);
 
 	const halfW = 90;
 	const boxH = 48;
@@ -274,7 +272,6 @@ export function generateAiReportPdf(clipData, summary = {}) {
 	doc.setTextColor(0, 40, 85);
 	doc.text('FEATURE ENGINEERING PIPELINE VECTORS', mX, mY);
 
-	// Table Headers
 	doc.setFillColor(226, 232, 240);
 	doc.rect(mX, mY + 2, pageWidth - 32, 5, 'F');
 	doc.setFontSize(6);
@@ -286,7 +283,6 @@ export function generateAiReportPdf(clipData, summary = {}) {
 	doc.text('MAINTENANCE INDEX', mX + 128, mY + 5.5);
 	doc.text('HEALTH INDEX', mX + 160, mY + 5.5);
 
-	// Table Values
 	const looseRate = (looseCount / (totalScans || 1)).toFixed(3);
 	const wearRate = (wearCount / (totalScans || 1)).toFixed(3);
 	const repRate = (replacementCount / (totalScans || 1)).toFixed(3);
@@ -308,7 +304,7 @@ export function generateAiReportPdf(clipData, summary = {}) {
 	doc.text(`${healthIndex}/100`, mX + 160, mY + 11.2);
 
 	// Actionable Recommendation Box
-	doc.setFillColor(254, 243, 199); // Soft amber
+	doc.setFillColor(254, 243, 199);
 	doc.setDrawColor(245, 158, 11);
 	doc.setLineWidth(0.3);
 	doc.roundedRect(mX, mY + 16, pageWidth - 32, 22, 1.5, 1.5, 'FD');
@@ -340,11 +336,10 @@ export function generateAiReportPdf(clipData, summary = {}) {
 	doc.setDrawColor(203, 213, 225);
 	doc.roundedRect(12, signY + 3, pageWidth - 24, signBoxH, 2, 2, 'S');
 
-	// Left: Inspection details & verification stamp
 	doc.setFont('helvetica', 'bold');
 	doc.setFontSize(7.5);
 	doc.setTextColor(71, 85, 105);
-	doc.text('TELEMETRY VERIFICATION SEAL:', 16, signY + 12);
+	doc.text('DATA VERIFICATION SEAL:', 16, signY + 12);
 
 	doc.setFont('helvetica', 'normal');
 	doc.setFontSize(6.5);
@@ -381,7 +376,7 @@ export function generateAiReportPdf(clipData, summary = {}) {
 	doc.text('DIGITALLY CERTIFIED', sigX + 8, signY + 16);
 	doc.setFontSize(5.8);
 	doc.setTextColor(71, 85, 105);
-	doc.text('RAILCLIP TELEMETRY PASS', sigX + 8, signY + 22);
+	doc.text('RAILCLIP SYSTEM PASS', sigX + 8, signY + 22);
 
 	// 7. BOTTOM FOOTER STRIP
 	doc.setFillColor(0, 40, 85);
@@ -389,7 +384,7 @@ export function generateAiReportPdf(clipData, summary = {}) {
 	doc.setFont('helvetica', 'normal');
 	doc.setFontSize(6.5);
 	doc.setTextColor(203, 213, 225);
-	doc.text('Indian Railways Track Management System • Powered by RailClip & XGBoost Predictive Telemetry', 12, pageHeight - 5);
+	doc.text('Indian Railways Track Management System • Powered by RailClip & XGBoost Predictive System', 12, pageHeight - 5);
 	doc.setTextColor(254, 240, 138);
 	doc.text('Single-Page Official Report • Page 1 of 1', pageWidth - 55, pageHeight - 5);
 

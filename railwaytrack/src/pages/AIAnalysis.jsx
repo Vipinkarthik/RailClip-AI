@@ -105,8 +105,8 @@ const mockPredictions = [
   { id: '2', qrId: 'C0032', compId: 'C0032', batchNumber: 'RC0001', section: 'Batch - Procurement', station: 'Warehouse', manufacturer: 'Selva Steels', health: 44, priority: 'High', risk: 'High', confidence: 0.992, probability: '99.2%', remLife: '3-5 Days', recommendation: 'Severe mechanical wear detected. Schedule replacement within 48 hours to prevent track gauge shift.', date: '2026-09-11 19:30', totalScans: 22, looseCount: 5, wearCount: 6, replacementCount: 2, daysSinceLastInspection: 56, daysSinceLastRepair: 140, clipAgeDays: 37, lastStatus: 'Worn', trainFrequency: 'High' },
   { id: '3', qrId: 'C0008', compId: 'C0008', batchNumber: 'RC0001', section: 'Batch - Procurement', station: 'Warehouse', manufacturer: 'Selva Steels', health: 68, priority: 'Medium', risk: 'Medium', confidence: 0.894, probability: '89.4%', remLife: '30-45 Days', recommendation: 'Moderate wear observed. Schedule torque retightening and visual inspection within 7 days.', date: '2026-09-11 18:30', totalScans: 12, looseCount: 2, wearCount: 2, replacementCount: 0, daysSinceLastInspection: 21, daysSinceLastRepair: 65, clipAgeDays: 37, lastStatus: 'Worn', trainFrequency: 'Medium' },
   { id: '4', qrId: 'C0019', compId: 'C0019', batchNumber: 'RC0001', section: 'Batch - Procurement', station: 'Warehouse', manufacturer: 'Selva Steels', health: 72, priority: 'Medium', risk: 'Medium', confidence: 0.915, probability: '91.5%', remLife: '45 Days', recommendation: 'Toe-load tension loosening detected. Recalibrate torque to 12.5 kN within 10 days.', date: '2026-09-11 17:30', totalScans: 9, looseCount: 3, wearCount: 1, replacementCount: 0, daysSinceLastInspection: 18, daysSinceLastRepair: 50, clipAgeDays: 37, lastStatus: 'Loose', trainFrequency: 'Medium' },
-  { id: '5', qrId: 'C0044', compId: 'C0044', batchNumber: 'RC0001', section: 'Batch - Procurement', station: 'Warehouse', manufacturer: 'Selva Steels', health: 76, priority: 'Medium', risk: 'Medium', confidence: 0.881, probability: '88.1%', remLife: '60 Days', recommendation: 'Surface wear and micro-fissure signs detected. Perform ultrasonic telemetry scan in next cycle.', date: '2026-09-11 16:30', totalScans: 11, looseCount: 2, wearCount: 2, replacementCount: 0, daysSinceLastInspection: 28, daysSinceLastRepair: 75, clipAgeDays: 37, lastStatus: 'Worn', trainFrequency: 'Medium' },
-  { id: '6', qrId: 'C0001', compId: 'C0001', batchNumber: 'RC0001', section: 'Batch - Procurement', station: 'Warehouse', manufacturer: 'Selva Steels', health: 100, priority: 'Low', risk: 'Low', confidence: 1.0, probability: '100.0%', remLife: '15+ Years', recommendation: 'Optimal elasticity & toe-load. Routine telemetry monitoring.', date: '2026-09-11 15:30', totalScans: 2, looseCount: 0, wearCount: 0, replacementCount: 0, daysSinceLastInspection: 10, daysSinceLastRepair: 37, clipAgeDays: 37, lastStatus: 'Healthy', trainFrequency: 'Medium' },
+  { id: '5', qrId: 'C0044', compId: 'C0044', batchNumber: 'RC0001', section: 'Batch - Procurement', station: 'Warehouse', manufacturer: 'Selva Steels', health: 76, priority: 'Medium', risk: 'Medium', confidence: 0.881, probability: '88.1%', remLife: '60 Days', recommendation: 'Surface wear and micro-fissure signs detected. Perform ultrasonic scan in next cycle.', date: '2026-09-11 16:30', totalScans: 11, looseCount: 2, wearCount: 2, replacementCount: 0, daysSinceLastInspection: 28, daysSinceLastRepair: 75, clipAgeDays: 37, lastStatus: 'Worn', trainFrequency: 'Medium' },
+  { id: '6', qrId: 'C0001', compId: 'C0001', batchNumber: 'RC0001', section: 'Batch - Procurement', station: 'Warehouse', manufacturer: 'Selva Steels', health: 100, priority: 'Low', risk: 'Low', confidence: 1.0, probability: '100.0%', remLife: '15+ Years', recommendation: 'Optimal elasticity & toe-load. Routine clip monitoring.', date: '2026-09-11 15:30', totalScans: 2, looseCount: 0, wearCount: 0, replacementCount: 0, daysSinceLastInspection: 10, daysSinceLastRepair: 37, clipAgeDays: 37, lastStatus: 'Healthy', trainFrequency: 'Medium' },
   { id: '7', qrId: 'C0025', compId: 'C0025', batchNumber: 'RC0001', section: 'Batch - Procurement', station: 'Warehouse', manufacturer: 'Selva Steels', health: 100, priority: 'Low', risk: 'Low', confidence: 1.0, probability: '100.0%', remLife: '15+ Years', recommendation: 'Optimal structural integrity & toe-load elasticity. No immediate maintenance required; continue routine monitoring.', date: '2026-09-11 15:12', totalScans: 1, looseCount: 0, wearCount: 0, replacementCount: 0, daysSinceLastInspection: 37, daysSinceLastRepair: 37, clipAgeDays: 37, lastStatus: 'Healthy', trainFrequency: 'Medium' },
 ];
 
@@ -199,7 +199,7 @@ export default function AIAnalysis() {
   const handleDownloadPdf = (targetItem = null) => {
     const item = targetItem || selectedPrediction || filteredPredictions[0] || predictionList[0];
     if (!item) {
-      alert('No prediction telemetry data available for PDF export.');
+      alert('No prediction data available for PDF export.');
       return;
     }
     setIsDownloadingPdf(true);
@@ -341,7 +341,7 @@ export default function AIAnalysis() {
         <header className="sticky top-0 z-30 px-6 sm:px-8 py-3.5 bg-white/95 backdrop-blur-md border-b border-slate-200 flex items-center justify-between shadow-xs">
           <div>
             <h1 className="text-base sm:text-lg font-bold text-slate-900 flex items-center gap-2">
-              <span>Predictive Fastener AI Telemetry</span>
+              <span>Predictive Fastener AI Analysis</span>
               <span className="px-2 py-0.5 rounded-full bg-blue-100 text-blue-800 text-[10px] font-mono font-bold border border-blue-200">
                 XGBOOST ENGINE v2.4
               </span>
@@ -710,7 +710,7 @@ export default function AIAnalysis() {
         {/* FOOTER */}
         <footer className="mt-auto py-4 px-8 border-t border-slate-200 bg-white text-xs text-slate-500 flex flex-col sm:flex-row items-center justify-between gap-2">
           <div>AI Engine Status: <span className="font-mono text-emerald-700 font-bold">XGBoost API Connected</span> | Total Vectors: <span className="font-mono text-slate-800 font-semibold">5,842</span></div>
-          <div>Indian Railways Track Telemetry Platform • RDSO Compliant</div>
+          <div>Indian Railways Fastener Analysis Platform</div>
         </footer>
 
       </div>
