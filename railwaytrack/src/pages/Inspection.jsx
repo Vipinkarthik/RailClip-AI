@@ -217,7 +217,15 @@ function parseChildQrText(rawText) {
     }
   }
 
-  if (result.batchNumber && result.uClipId) {
+  // Single token fallback (e.g. user entered "C0015" or "RC0001")
+  if (!result.uClipId && text.match(/^[A-Za-z]\d{3,5}$/)) {
+    result.uClipId = text.toUpperCase();
+  }
+  if (!result.batchNumber && text.match(/^(?:BATCH|RC|MB)\d{3,5}$/i)) {
+    result.batchNumber = text.toUpperCase();
+  }
+
+  if (result.batchNumber || result.uClipId) {
     return {
       isValid: true,
       ...result,
@@ -226,7 +234,7 @@ function parseChildQrText(rawText) {
 
   return {
     isValid: false,
-    error: 'Invalid QR Code: Scanned QR must contain both "batchNo" and "uClipID" fields.',
+    error: 'Invalid QR Code / Input: Please scan or enter a valid Clip ID or Batch Number.',
   };
 }
 
@@ -304,8 +312,24 @@ export default function Inspection() {
 
   // Table State from database
   const [searchQuery, setSearchQuery] = useState('');
+  const [conditionFilter, setConditionFilter] = useState('All');
   const [historyList, setHistoryList] = useState([]);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
+
+  const filteredHistory = historyList.filter((item) => {
+    const q = searchQuery.toLowerCase().trim();
+    const matchesSearch = !q || [
+      item.uClipId,
+      item.clipId,
+      item.batchNumber,
+      item.inspectorId,
+      item.district,
+      item.remarks,
+    ].some(val => String(val || '').toLowerCase().includes(q));
+
+    const matchesCond = conditionFilter === 'All' || (item.condition || 'Healthy') === conditionFilter;
+    return matchesSearch && matchesCond;
+  });
 
   // Notifications State
   const [notifications, setNotifications] = useState([
@@ -614,7 +638,7 @@ export default function Inspection() {
               {sidebarOpen && (
                 <div className="flex flex-col whitespace-nowrap">
                   <span className="font-extrabold text-base text-white tracking-wide">
-                    RailClip<span className="text-blue-400">AI</span>
+                    RailClip
                   </span>
                   <span className="text-[9px] text-blue-200 font-mono tracking-widest font-semibold">
                     IR COMMAND CENTER
@@ -1104,10 +1128,10 @@ export default function Inspection() {
             {/* Inspection History Log Table (7 cols) */}
             <div className="lg:col-span-7 p-6 rounded-2xl bg-white border border-slate-200/90 shadow-sm flex flex-col justify-between">
               <div>
-                <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100">
+                <div className="flex items-center justify-between mb-3 pb-3 border-b border-slate-100">
                   <div>
                     <h3 className="text-sm font-bold text-slate-900">Recent P-Way Inspection Records</h3>
-                    <p className="text-[11px] text-slate-500">Live verified inspections from database</p>
+                    <p className="text-[11px] text-slate-500">Live verified inspections from database ({filteredHistory.length} of {historyList.length})</p>
                   </div>
                   <div className="flex items-center space-x-2">
                     <button 
@@ -1124,11 +1148,37 @@ export default function Inspection() {
                   </div>
                 </div>
 
+                {/* Table Search & Filter Bar */}
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 mb-3">
+                  <div className="relative flex-1">
+                    <FaSearch className="absolute left-3 top-2.5 text-slate-400 text-xs" />
+                    <input
+                      type="text"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      placeholder="Search by Clip ID (e.g. C0015, C0032), Inspector, Remarks..."
+                      className="w-full pl-8 pr-3 py-1.5 rounded-xl bg-slate-50 border border-slate-300 text-xs text-slate-900 focus:outline-none focus:border-blue-600 font-mono"
+                    />
+                  </div>
+                  <select
+                    value={conditionFilter}
+                    onChange={(e) => setConditionFilter(e.target.value)}
+                    className="px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-300 text-xs text-slate-700 focus:outline-none focus:border-blue-600 shrink-0 cursor-pointer"
+                  >
+                    <option value="All">All Conditions</option>
+                    <option value="Healthy">Healthy (Optimal)</option>
+                    <option value="Loose">Loose Fastener</option>
+                    <option value="Worn">Surface Worn</option>
+                  </select>
+                </div>
+
                 <div className="overflow-x-auto rounded-xl border border-slate-200 max-h-[380px] overflow-y-auto">
                   <table className="w-full text-left text-xs">
                     <thead className="bg-slate-50 text-slate-600 font-mono uppercase text-[10px] tracking-wider border-b border-slate-200 sticky top-0 z-10">
                       <tr>
                         <th className="py-2.5 px-3">Date</th>
+                        <th className="py-2.5 px-3">Clip ID</th>
+                        <th className="py-2.5 px-3">Batch</th>
                         <th className="py-2.5 px-3">District</th>
                         <th className="py-2.5 px-3">Inspector ID</th>
                         <th className="py-2.5 px-3">Condition</th>
@@ -1140,24 +1190,30 @@ export default function Inspection() {
                     <tbody className="divide-y divide-slate-100 text-slate-700">
                       {isLoadingHistory ? (
                         <tr>
-                          <td colSpan={7} className="py-8 text-center text-slate-500 font-mono text-xs">
+                          <td colSpan={9} className="py-8 text-center text-slate-500 font-mono text-xs">
                             <div className="flex items-center justify-center space-x-2">
                               <FaSync className="animate-spin text-blue-600 text-sm" />
                               <span>Fetching inspection logs from database...</span>
                             </div>
                           </td>
                         </tr>
-                      ) : historyList.length === 0 ? (
+                      ) : filteredHistory.length === 0 ? (
                         <tr>
-                          <td colSpan={7} className="py-8 text-center text-slate-400 text-xs">
-                            No inspection records found in database. Log a new inspection using the form.
+                          <td colSpan={9} className="py-8 text-center text-slate-400 text-xs">
+                            No inspection records found in database matching your filters.
                           </td>
                         </tr>
                       ) : (
-                        historyList.map((row, idx) => (
+                        filteredHistory.map((row, idx) => (
                           <tr key={row.id || idx} className="hover:bg-blue-50/40 transition-colors">
                             <td className="py-2.5 px-3 font-mono text-slate-600 whitespace-nowrap">
                               {row.inspectionDate || row.date?.split(' ')[0] || 'N/A'}
+                            </td>
+                            <td className="py-2.5 px-3 font-mono font-bold text-blue-700 whitespace-nowrap">
+                              {row.uClipId || row.clipId || 'N/A'}
+                            </td>
+                            <td className="py-2.5 px-3 font-mono text-slate-500 text-[11px] whitespace-nowrap">
+                              {row.batchNumber || 'RC0001'}
                             </td>
                             <td className="py-2.5 px-3 font-semibold">
                               <span className="px-1.5 py-0.5 rounded text-[10px] font-mono bg-blue-50 text-blue-700 border border-blue-200 font-bold whitespace-nowrap">
@@ -1170,7 +1226,8 @@ export default function Inspection() {
                             <td className="py-2.5 px-3">
                               <span className={`px-1.5 py-0.5 rounded text-[10px] font-semibold whitespace-nowrap ${
                                 row.condition === 'Healthy' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' :
-                                row.condition === 'Loose' ? 'bg-amber-50 text-amber-700 border border-amber-200' : 'bg-rose-50 text-rose-700 border border-rose-200'
+                                row.condition === 'Loose' ? 'bg-amber-50 text-amber-700 border border-amber-200' :
+                                row.condition === 'Worn' ? 'bg-orange-50 text-orange-700 border border-orange-200' : 'bg-rose-50 text-rose-700 border border-rose-200'
                               }`}>
                                 {row.condition || 'Healthy'}
                               </span>

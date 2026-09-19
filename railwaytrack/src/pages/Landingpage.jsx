@@ -441,7 +441,7 @@ export default function Landingpage() {
             <div className="flex flex-col leading-tight">
               <div className="flex items-center gap-1.5">
                 <span className="font-extrabold text-xl tracking-tight text-slate-900">
-                  RailClip <span className="text-blue-600">AI</span>
+                  RailClip
                 </span>
                 <span className="text-[10px] uppercase font-bold px-1.5 py-0.2 rounded bg-amber-100 text-amber-800 border border-amber-300">
                   IR PROPOSAL
@@ -472,7 +472,7 @@ export default function Landingpage() {
             </button>
 
             <button 
-              onClick={() => navigate('/dashboard')}
+              onClick={() => navigate('/login')}
               className="px-4 sm:px-5 py-2.5 rounded-lg font-semibold text-xs sm:text-sm bg-gradient-to-r from-[#003366] to-[#0055a5] hover:from-[#002244] hover:to-[#004080] text-white transition-all shadow-md shadow-blue-900/20 active:scale-95 cursor-pointer flex items-center gap-2"
             >
               <span>Command Center</span>
@@ -517,7 +517,7 @@ export default function Landingpage() {
               </button>
 
               <button 
-                onClick={() => navigate('/dashboard')}
+                onClick={() => navigate('/login')}
                 className="w-full sm:w-auto px-6 py-3.5 rounded-lg bg-white border border-slate-300 hover:border-slate-400 hover:bg-slate-50 text-slate-800 font-semibold text-sm transition-all shadow-sm flex items-center justify-center gap-2 cursor-pointer"
               >
                 <FaPlay className="text-xs text-blue-600" />
@@ -663,7 +663,7 @@ export default function Landingpage() {
               Full Compliance with Indian Railways Permanent Way Specifications
             </h2>
             <p className="text-slate-600 text-sm leading-relaxed">
-              The <strong>RailClip AI platform</strong> directly maps to standard Indian Railways fastener components, allowing maintenance teams to log and monitor:
+              The <strong>RailClip platform</strong> directly maps to standard Indian Railways fastener components, allowing maintenance teams to log and monitor:
             </p>
 
             <div className="space-y-3">
@@ -749,7 +749,7 @@ export default function Landingpage() {
               <div className="w-8 h-8 rounded-lg bg-blue-600 text-amber-300 flex items-center justify-center text-base">
                 <FaTrain />
               </div>
-              <span>RailClip <span className="text-cyan-400">AI</span></span>
+              <span>RailClip</span>
             </div>
             <p className="text-blue-200 leading-relaxed font-light text-xs">
               Advanced Elastic Rail Clip (ERC) Lifecycle & Integrity Telemetry System designed for Indian Railways (भारतीय रेल) infrastructure safety and digital track maintenance.
@@ -799,7 +799,7 @@ export default function Landingpage() {
         {/* Bottom Copyright & Disclaimer */}
         <div className="max-w-7xl mx-auto pt-6 flex flex-col sm:flex-row items-center justify-between text-[11px] text-blue-300 gap-3">
           <div>
-            © {new Date().getFullYear()} RailClip AI System • Suggested Solution Proposal for Ministry of Railways, Govt. of India.
+            © {new Date().getFullYear()} RailClip System • Suggested Solution Proposal for Ministry of Railways, Govt. of India.
           </div>
           <div className="flex space-x-5">
             <span className="hover:text-white cursor-pointer">Security Standards</span>

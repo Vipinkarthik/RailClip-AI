@@ -1,4 +1,5 @@
 const { db } = require('../config/firebase');
+const { evaluateAndSaveClipPrediction } = require('./aiController');
 
 const componentBatchesCollection = db.collection('component_batches');
 const inspectionsCollection = db.collection('inspections');
@@ -129,7 +130,15 @@ function parseRawQrText(rawText) {
 		}
 	}
 
-	if (result.batchNumber && result.uClipId) {
+	// Single token fallback (e.g. user entered "C0015" or "BATCH001")
+	if (!result.uClipId && text.match(/^[A-Za-z]\d{3,5}$/)) {
+		result.uClipId = text.toUpperCase();
+	}
+	if (!result.batchNumber && text.match(/^(?:BATCH|RC|MB)\d{3,5}$/i)) {
+		result.batchNumber = text.toUpperCase();
+	}
+
+	if (result.batchNumber || result.uClipId) {
 		return {
 			isValid: true,
 			...result,
@@ -138,7 +147,7 @@ function parseRawQrText(rawText) {
 
 	return {
 		isValid: false,
-		error: 'Invalid QR Code: Scanned QR must contain both "batchNo" and "uClipID" fields.',
+		error: 'Invalid QR Code / Input: Please scan or enter a valid Clip ID or Batch Number.',
 	};
 }
 
@@ -169,11 +178,16 @@ async function lookupComponent(req, res) {
 		let fixedBy = String(reqFixedBy || parsedFromQr.fixedBy || '').trim();
 		let gpsGeolocation = String(reqGps || reqGeo || parsedFromQr.gpsGeolocation || '').trim();
 
-		// Validation: Both batchNo and uClipId must be present
-		if (!batchNumber || !uClipId) {
+		// Fallback: check if qrText is directly a clip ID like C0015
+		if (!uClipId && qrText && /^[A-Za-z]\d{2,5}$/.test(qrText.trim())) {
+			uClipId = qrText.trim().toUpperCase();
+		}
+
+		// Validation: At least one identifier must be present
+		if (!batchNumber && !uClipId) {
 			return res.status(400).json({
 				success: false,
-				message: parsedFromQr.error || 'Invalid QR Code: Scanned QR must contain both "batchNo" and "uClipID" fields.',
+				message: parsedFromQr.error || 'Invalid QR / Clip ID: Scanned QR or input must contain a valid Clip ID or Batch Number.',
 			});
 		}
 
@@ -297,24 +311,24 @@ async function lookupComponent(req, res) {
 
 		const totalScans = clipData?.scanCount || clipData?.stats?.totalScans || 0;
 		const looseCount = clipData?.looseCount || clipData?.stats?.looseCount || 0;
-		const healthScore = looseCount > 0 ? Math.max(60, 100 - looseCount * 10) : (matchedBatch?.health ?? 100);
+		const healthScore = clipData?.health !== undefined ? clipData.health : (looseCount > 0 ? Math.max(40, 100 - looseCount * 10) : (matchedBatch?.health ?? 100));
 
 		const resolvedProfile = {
 			batchNumber: targetBatch || matchedBatch?.masterQrId || matchedBatch?.batchNo || 'N/A',
 			uClipId: uClipId || clipData?.uClipID || clipData?.qrId || 'N/A',
 			district: (district || clipData?.district || '').toUpperCase() || 'N/A',
-			divisionSection: divisionSection || clipData?.dSection || clipData?.division || matchedBatch?.section || 'N/A',
+			divisionSection: divisionSection || clipData?.section || clipData?.dSection || clipData?.division || matchedBatch?.section || 'N/A',
 			fixedBy: fixedBy || clipData?.fixedBy || 'N/A',
 			gpsGeolocation: gpsGeolocation || 'N/A',
-			manufacturer: manufacturer,
-			purchaseDate: purchaseDate,
+			manufacturer: clipData?.manufacturer || manufacturer,
+			purchaseDate: clipData?.installationDate || purchaseDate,
 			status: clipData?.status || matchedBatch?.status || 'Active',
 			condition: clipData?.condition || 'Good Condition',
 			health: healthScore,
-			priority: clipData?.stats?.lastPriority || matchedBatch?.priority || 'Low',
-			zone: matchedBatch?.zone || 'N/A',
-			division: matchedBatch?.division || 'N/A',
-			station: matchedBatch?.station || 'N/A',
+			priority: clipData?.priority || clipData?.stats?.lastPriority || matchedBatch?.priority || 'Low',
+			zone: clipData?.zone || matchedBatch?.zone || 'N/A',
+			division: clipData?.division || matchedBatch?.division || 'N/A',
+			station: clipData?.station || matchedBatch?.station || 'N/A',
 			trackType: 'Broad Gauge (1676 mm)',
 			material: 'Spring Steel 60Si7',
 			lastInspectionDate: clipData?.lastScannedAt ? clipData.lastScannedAt.split('T')[0] : new Date().toISOString().split('T')[0],
@@ -376,12 +390,23 @@ async function createInspection(req, res) {
 
 		const docRef = await inspectionsCollection.add(newRecord);
 
+		// Trigger real-time AI evaluation across all merged scans for this clip
+		let aiEvaluation = null;
+		if (newRecord.uClipId) {
+			try {
+				aiEvaluation = await evaluateAndSaveClipPrediction(newRecord.uClipId, newRecord.batchNumber);
+			} catch (evalErr) {
+				console.warn('Auto AI evaluation after inspection log error:', evalErr.message);
+			}
+		}
+
 		return res.status(201).json({
 			success: true,
-			message: 'Inspection logged successfully.',
+			message: 'Inspection logged successfully and AI telemetry synchronized.',
 			data: {
 				id: docRef.id,
 				...newRecord,
+				aiEvaluation,
 			},
 		});
 	} catch (error) {

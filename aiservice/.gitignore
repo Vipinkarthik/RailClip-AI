@@ -1,50 +1,43 @@
-# Python Cache
+# Python Bytecode & Cache
 __pycache__/
 *.py[cod]
 *$py.class
+*.pyc
+*.pyd
 
-# Virtual Environment
+# Virtual Environments
 venv/
 .venv/
 env/
 ENV/
 
-# Environment Variables
-.env
-
-# Jupyter
-.ipynb_checkpoints/
-
-# Logs
-*.log
-
-# Build
-build/
-dist/
-*.egg-info/
-
-# Cache
+# Testing & Type Checking Cache
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
 
-# IDE
-.vscode/
-.idea/
+# Jupyter Notebooks
+.ipynb_checkpoints/
 
-# OS Files
-.DS_Store
-Thumbs.db
+# Environment & Secrets
+.env
+.env.*
 
-# Temporary Files
+# Logs & Debugging
+*.log
+logs/
+
+# Build & Packaging
+build/
+dist/
+*.egg-info/
+
+# Temporary & Swap Files
 *.tmp
 *.temp
+*.swp
+*.swo
 
-# Model Files (Uncomment if you don't want to push them)
-# models/*.pkl
-
-# Dataset Files (Uncomment if you don't want to push them)
-# *.csv
-
-# Misc
-.python-version
+# OS Generated Files
+.DS_Store
+Thumbs.db

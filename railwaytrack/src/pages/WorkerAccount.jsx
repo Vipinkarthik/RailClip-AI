@@ -237,7 +237,7 @@ export default function WorkerAccount() {
               {sidebarOpen && (
                 <div className="flex flex-col whitespace-nowrap">
                   <span className="font-extrabold text-base text-white tracking-wide">
-                    RailClip<span className="text-blue-400">AI</span>
+                    RailClip
                   </span>
                   <span className="text-[9px] text-blue-200 font-mono tracking-widest font-semibold">
                     IR COMMAND CENTER

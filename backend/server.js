@@ -6,6 +6,7 @@ const authRoutes = require('./routes/authRoutes');
 const componentRoutes = require('./routes/componentRoutes');
 const workerRoutes = require('./routes/workerRoutes');
 const inspectionRoutes = require('./routes/inspectionRoutes');
+const aiRoutes = require('./routes/aiRoutes');
 const { notFound, errorHandler } = require('./middleware/errorMiddleware');
 
 const app = express();
@@ -20,13 +21,15 @@ app.use(
 app.use(express.json());
 
 app.get('/api/health', (req, res) => {
-	res.json({ success: true, message: 'RailClip AI backend is running.' });
+	res.json({ success: true, message: 'RailClip backend is running.' });
 });
 
 app.use('/api/auth', authRoutes);
 app.use('/api/components', componentRoutes);
 app.use('/api/workers', workerRoutes);
 app.use('/api/inspections', inspectionRoutes);
+app.use('/api/ai', aiRoutes);
+
 
 app.use(notFound);
 app.use(errorHandler);
@@ -37,7 +40,11 @@ if (require.main === module) {
 	});
 
 	server.on('error', (error) => {
-		console.error('Backend server error:', error);
+		if (error.code === 'EADDRINUSE') {
+			console.error(`Error: Port ${PORT} is already in use. You can free it or configure a different PORT in .env.`);
+		} else {
+			console.error('Backend server error:', error);
+		}
 		process.exit(1);
 	});
 

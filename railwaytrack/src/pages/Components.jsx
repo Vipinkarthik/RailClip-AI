@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { createComponentBatch, listComponentBatches } from '../api/components';
+import { createComponentBatch, listComponentBatches, listClips } from '../api/components';
+import { getAiPredictions } from '../api/ai';
 import { getLoggedInDistrictOfficer } from '../services/authHelper';
 import { BrowserQRCodeReader } from '@zxing/browser';
 import { 
@@ -485,7 +486,10 @@ export default function Components() {
   // Navigation & Workspace State
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [activeTab, setActiveTab] = useState('Components');
+  const [viewMode, setViewMode] = useState('clips'); // 'clips' or 'batches'
   const [componentsList, setComponentsList] = useState([]);
+  const [clipsList, setClipsList] = useState([]);
+  const [batchesList, setBatchesList] = useState([]);
   const [currentTime, setCurrentTime] = useState(new Date());
   const [loadingBatches, setLoadingBatches] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -528,38 +532,61 @@ export default function Components() {
     return () => clearInterval(timer);
   }, []);
 
-  useEffect(() => {
-    let isMounted = true;
+  const loadData = async () => {
+    try {
+      setLoadingBatches(true);
+      const [batchesRes, clipsRes] = await Promise.allSettled([
+        listComponentBatches(),
+        listClips(),
+      ]);
 
-    const loadBatches = async () => {
-      try {
-        const response = await listComponentBatches();
-        const batches = Array.isArray(response?.data) ? response.data : [];
+      const batches = batchesRes.status === 'fulfilled' && Array.isArray(batchesRes.value?.data) ? batchesRes.value.data : [];
+      let clips = clipsRes.status === 'fulfilled' && Array.isArray(clipsRes.value?.data) && clipsRes.value.data.length > 0
+        ? clipsRes.value.data 
+        : [];
 
-        if (isMounted) {
-          setComponentsList(batches.map(normalizeBatchRecord).filter(Boolean));
-        }
-      } catch (error) {
-        if (isMounted) {
-          setComponentsList([]);
-          setNotifications((prev) => [
-            { id: Date.now(), msg: 'Unable to load component batches from the backend', time: 'Just now' },
-            ...prev,
-          ]);
-        }
-      } finally {
-        if (isMounted) {
-          setLoadingBatches(false);
-        }
+      if (clips.length === 0) {
+        try {
+          const aiRes = await getAiPredictions();
+          if (aiRes?.success && Array.isArray(aiRes.data)) {
+            clips = aiRes.data;
+          }
+        } catch (e) {}
       }
-    };
 
-    loadBatches();
+      const normBatches = batches.map(normalizeBatchRecord).filter(Boolean);
+      const normClips = clips.map(normalizeBatchRecord).filter(Boolean);
 
-    return () => {
-      isMounted = false;
-    };
+      setBatchesList(normBatches);
+      setClipsList(normClips);
+
+      if (viewMode === 'batches') {
+        setComponentsList(normBatches);
+      } else {
+        setComponentsList(normClips.length ? normClips : normBatches);
+      }
+    } catch (error) {
+      setComponentsList([]);
+      setNotifications((prev) => [
+        { id: Date.now(), msg: 'Unable to load components from the backend', time: 'Just now' },
+        ...prev,
+      ]);
+    } finally {
+      setLoadingBatches(false);
+    }
+  };
+
+  useEffect(() => {
+    loadData();
   }, []);
+
+  useEffect(() => {
+    if (viewMode === 'batches') {
+      setComponentsList(batchesList);
+    } else {
+      setComponentsList(clipsList.length ? clipsList : batchesList);
+    }
+  }, [viewMode, clipsList, batchesList]);
 
   // Navigation Routing Handler
   const handleNavClick = (label, path) => {
@@ -842,7 +869,7 @@ export default function Components() {
               {sidebarOpen && (
                 <div className="flex flex-col whitespace-nowrap">
                   <span className="font-extrabold text-base text-white tracking-wide">
-                    RailClip<span className="text-blue-400">AI</span>
+                    RailClip
                   </span>
                   <span className="text-[9px] text-blue-200 font-mono tracking-widest font-semibold">
                     IR COMMAND CENTER
@@ -978,12 +1005,48 @@ export default function Components() {
           {/* 1. TOP STATS CARDS */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
             {[
-              { title: 'Total Registered', count: componentsList.length, trend: 'Active DB', icon: FaQrcode, color: 'from-[#003366] to-[#0284c7]' },
-              { title: 'Healthy Components', count: componentsList.filter(c => c.status === 'Active').length, trend: 'Optimal', icon: FaCheckCircle, color: 'from-emerald-700 to-emerald-500' },
-              { title: 'Under Maintenance', count: componentsList.filter(c => c.status === 'Maintenance').length, trend: 'In Progress', icon: FaTools, color: 'from-amber-600 to-orange-500' },
-              { title: 'Components Replaced', count: componentsList.filter(c => c.status === 'Replaced').length, trend: 'Logged', icon: FaExclamationTriangle, color: 'from-rose-700 to-red-500' },
-              { title: 'Inactive Assets', count: componentsList.filter(c => c.status === 'Inactive').length, trend: 'Offline', icon: FaInfoCircle, color: 'from-slate-600 to-slate-500' },
-              { title: 'Pending QR Sync', count: 0, trend: 'All Synced', icon: FaCloud, color: 'from-blue-700 to-indigo-600' },
+              { 
+                title: 'Total Registered', 
+                count: (clipsList.length || componentsList.length), 
+                trend: 'Active Fleet', 
+                icon: FaQrcode, 
+                color: 'from-[#003366] to-[#0284c7]' 
+              },
+              { 
+                title: 'Healthy Components', 
+                count: (clipsList.length ? clipsList : componentsList).filter(c => c.status === 'Active' || c.priority === 'Low').length, 
+                trend: 'Optimal (100%)', 
+                icon: FaCheckCircle, 
+                color: 'from-emerald-700 to-emerald-500' 
+              },
+              { 
+                title: 'Under Maintenance', 
+                count: (clipsList.length ? clipsList : componentsList).filter(c => c.status === 'Maintenance' || c.priority === 'High' || c.priority === 'Medium').length, 
+                trend: 'High & Medium Risk', 
+                icon: FaTools, 
+                color: 'from-amber-600 to-orange-500' 
+              },
+              { 
+                title: 'Components Replaced', 
+                count: (clipsList.length ? clipsList : componentsList).filter(c => c.status === 'Replaced').length, 
+                trend: 'Logged', 
+                icon: FaExclamationTriangle, 
+                color: 'from-rose-700 to-red-500' 
+              },
+              { 
+                title: 'Degradation Ratio', 
+                count: `${clipsList.length ? ((clipsList.filter(c => c.priority === 'High' || c.priority === 'Medium').length / clipsList.length) * 100).toFixed(0) : 0}%`, 
+                trend: 'Fatigue Risk', 
+                icon: FaChartLine, 
+                color: 'from-purple-700 to-indigo-600' 
+              },
+              { 
+                title: 'Cloud Sync', 
+                count: '100%', 
+                trend: 'Firestore Live', 
+                icon: FaCloud, 
+                color: 'from-blue-700 to-indigo-600' 
+              },
             ].map((stat, idx) => {
               const Icon = stat.icon;
               return (
@@ -1176,15 +1239,53 @@ export default function Components() {
           <div className="p-6 rounded-2xl bg-white border border-slate-200/90 shadow-sm">
             <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-6">
               <div>
-                <h3 className="text-sm font-bold text-slate-900">Registered Railway Track Clips</h3>
-                <p className="text-[11px] text-slate-500">Complete digitized inventory logs synced with cloud database</p>
+                <div className="flex flex-wrap items-center gap-3">
+                  <h3 className="text-sm font-bold text-slate-900">
+                    {viewMode === 'clips' ? 'Registered Railway Track Clips' : 'Master Batch Registry'}
+                  </h3>
+                  <div className="inline-flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200 text-xs font-semibold">
+                    <button
+                      type="button"
+                      onClick={() => setViewMode('clips')}
+                      className={`px-3 py-1 rounded-lg transition-all cursor-pointer ${
+                        viewMode === 'clips' 
+                          ? 'bg-white text-blue-700 shadow-xs font-bold border border-slate-200' 
+                          : 'text-slate-600 hover:text-slate-900'
+                      }`}
+                    >
+                      Clips Inventory ({clipsList.length})
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setViewMode('batches')}
+                      className={`px-3 py-1 rounded-lg transition-all cursor-pointer ${
+                        viewMode === 'batches' 
+                          ? 'bg-white text-blue-700 shadow-xs font-bold border border-slate-200' 
+                          : 'text-slate-600 hover:text-slate-900'
+                      }`}
+                    >
+                      Master Batches ({batchesList.length})
+                    </button>
+                  </div>
+                </div>
+                <p className="text-[11px] text-slate-500 mt-1">Complete digitized inventory logs synced with cloud database</p>
               </div>
 
               <div className="flex flex-wrap items-center gap-3">
+                <div className="relative">
+                  <FaSearch className="absolute left-3 top-2.5 text-slate-400 text-xs" />
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="Search by ID, section..."
+                    className="pl-8 pr-3 py-1.5 rounded-xl bg-slate-50 border border-slate-300 text-xs text-slate-900 focus:outline-none focus:border-blue-600 font-mono"
+                  />
+                </div>
                 <select 
                   value={statusFilter} 
                   onChange={(e) => setStatusFilter(e.target.value)}
-                  className="px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-300 text-xs text-slate-700 focus:outline-none focus:border-blue-600"
+                  className="px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-300 text-xs text-slate-700 focus:outline-none focus:border-blue-600 cursor-pointer"
                 >
                   <option value="All">All Statuses</option>
                   <option value="Active">Active</option>
@@ -1196,7 +1297,7 @@ export default function Components() {
                 <select 
                   value={zoneFilter} 
                   onChange={(e) => setZoneFilter(e.target.value)}
-                  className="px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-300 text-xs text-slate-700 focus:outline-none focus:border-blue-600"
+                  className="px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-300 text-xs text-slate-700 focus:outline-none focus:border-blue-600 cursor-pointer"
                 >
                   <option value="All">All Zones</option>
                   <option value="Southern">Southern</option>
@@ -1211,23 +1312,84 @@ export default function Components() {
             <div className="overflow-x-auto rounded-xl border border-slate-200">
               <table className="w-full text-left text-xs">
                 <thead className="bg-slate-50 text-slate-600 font-mono uppercase text-[10px] tracking-wider border-b border-slate-200">
-                  <tr>
-                    <th className="py-3 px-4">Master QR</th>
-                    <th className="py-3 px-4">Batch Details</th>
-                    <th className="py-3 px-4">Child QR Range</th>
-                    <th className="py-3 px-4">Clips</th>
-                    <th className="py-3 px-4">Purchase Date</th>
-                    <th className="py-3 px-4">Status</th>
-                    <th className="py-3 px-4 text-right">Actions</th>
-                  </tr>
+                  {viewMode === 'clips' ? (
+                    <tr>
+                      <th className="py-3 px-4">Clip ID / QR</th>
+                      <th className="py-3 px-4">Batch No</th>
+                      <th className="py-3 px-4">Section & Station</th>
+                      <th className="py-3 px-4">Health Score</th>
+                      <th className="py-3 px-4">AI Priority</th>
+                      <th className="py-3 px-4">Condition</th>
+                      <th className="py-3 px-4">Status</th>
+                      <th className="py-3 px-4 text-right">Actions</th>
+                    </tr>
+                  ) : (
+                    <tr>
+                      <th className="py-3 px-4">Master QR</th>
+                      <th className="py-3 px-4">Batch Details</th>
+                      <th className="py-3 px-4">Child QR Range</th>
+                      <th className="py-3 px-4">Clips</th>
+                      <th className="py-3 px-4">Purchase Date</th>
+                      <th className="py-3 px-4">Status</th>
+                      <th className="py-3 px-4 text-right">Actions</th>
+                    </tr>
+                  )}
                 </thead>
                 <tbody className="divide-y divide-slate-100 text-slate-700">
                   {filteredComponents.length === 0 ? (
                     <tr>
-                      <td colSpan={7} className="py-8 text-center text-slate-400">
+                      <td colSpan={8} className="py-8 text-center text-slate-400">
                         No component records found matching your filters.
                       </td>
                     </tr>
+                  ) : viewMode === 'clips' ? (
+                    filteredComponents.map((item) => (
+                      <tr key={item.id} className="hover:bg-blue-50/40 transition-colors">
+                        <td className="py-3.5 px-4 font-mono text-blue-700 font-bold">{item.qrId || item.compId}</td>
+                        <td className="py-3.5 px-4 font-mono text-slate-600 font-medium">{item.batchNo || item.masterQrId || 'RC0001'}</td>
+                        <td className="py-3.5 px-4">
+                          <div className="font-medium text-slate-900">{item.section || item.childQrRange}</div>
+                          <div className="text-[10px] text-slate-500">{item.station || 'Coimbatore Jn'}</div>
+                        </td>
+                        <td className="py-3.5 px-4 font-mono font-bold">
+                          <span className={item.health > 80 ? 'text-emerald-700' : item.health > 50 ? 'text-amber-700' : 'text-rose-700'}>
+                            {item.health}/100
+                          </span>
+                        </td>
+                        <td className="py-3.5 px-4">
+                          <span className={`px-2 py-0.5 rounded text-[10px] font-semibold ${
+                            item.priority === 'High' ? 'bg-rose-50 text-rose-700 border border-rose-200' :
+                            item.priority === 'Medium' ? 'bg-amber-50 text-amber-700 border border-amber-200' :
+                            'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                          }`}>
+                            {item.priority || 'Low'}
+                          </span>
+                        </td>
+                        <td className="py-3.5 px-4 text-slate-600 font-medium">
+                          {item.condition || 'Healthy'}
+                        </td>
+                        <td className="py-3.5 px-4">
+                          <span className={`px-2 py-0.5 rounded text-[10px] font-semibold ${
+                            item.status === 'Active' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' :
+                            item.status === 'Maintenance' ? 'bg-amber-50 text-amber-700 border border-amber-200' :
+                            item.status === 'Replaced' ? 'bg-rose-50 text-rose-700 border border-rose-200' : 'bg-slate-100 text-slate-600 border border-slate-200'
+                          }`}>
+                            {item.status}
+                          </span>
+                        </td>
+                        <td className="py-3.5 px-4 text-right space-x-2">
+                          <button onClick={() => { setSelectedComponent(item); setDrawerOpen(true); }} className="p-1.5 rounded-lg bg-slate-100 hover:bg-blue-50 text-blue-700 border border-slate-200 cursor-pointer transition-all" title="View details">
+                            <FaEye />
+                          </button>
+                          <button onClick={() => { setSelectedComponent(item); setEditModalOpen(true); }} className="p-1.5 rounded-lg bg-slate-100 hover:bg-amber-50 text-amber-700 border border-slate-200 cursor-pointer transition-all" title="Edit">
+                            <FaEdit />
+                          </button>
+                          <button onClick={() => { setSelectedComponent(item); setDeleteModalOpen(true); }} className="p-1.5 rounded-lg bg-slate-100 hover:bg-rose-50 text-rose-700 border border-slate-200 cursor-pointer transition-all" title="Delete">
+                            <FaTrash />
+                          </button>
+                        </td>
+                      </tr>
+                    ))
                   ) : (
                     filteredComponents.map((item) => (
                       <tr key={item.id} className="hover:bg-blue-50/40 transition-colors">

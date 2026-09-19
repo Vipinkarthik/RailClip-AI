@@ -198,7 +198,68 @@ async function listBatches(req, res) {
 	}
 }
 
+function mapClipDocument(doc) {
+	const data = doc.data();
+	const qrId = data.qrId || data.uClipID || doc.id;
+	return {
+		id: doc.id,
+		qrId: qrId,
+		masterQrId: data.batchNo || 'RC0001',
+		batchNo: data.batchNo || 'RC0001',
+		compId: qrId,
+		batchDetails: data.section || data.trackSection || 'ERC Mk-III Fastener',
+		childQrRange: data.section || 'D-1 Section',
+		clipsPurchased: 1,
+		totalClips: 1,
+		purchaseDate: data.installationDate || '2026-08-05',
+		installDate: data.installationDate || '2026-08-05',
+		manufacturer: data.manufacturer || 'Selva Steels',
+		zone: data.zone || 'Southern',
+		division: data.division || 'Coimbatore',
+		station: data.station || 'Coimbatore Jn',
+		section: data.section || data.trackSection || 'D-1',
+		status: data.status || (data.priority === 'High' || data.priority === 'Medium' ? 'Maintenance' : 'Active'),
+		condition: data.condition || 'Healthy',
+		health: data.health ?? 100,
+		priority: data.priority || 'Low',
+		confidence: data.confidence,
+		looseCount: data.looseCount || 0,
+		wearCount: data.wearCount || 0,
+		replacementCount: data.replacementCount || 0,
+		scanCount: data.scanCount || 1,
+		lastScannedAt: data.lastScannedAt,
+		lastInspection: data.lastScannedAt ? data.lastScannedAt.split('T')[0] : '2026-09-10',
+		createdAt: data.createdAt,
+		updatedAt: data.updatedAt,
+	};
+}
+
+async function listClips(req, res) {
+	try {
+		const snapshot = await db.collection('railway_clips').get();
+		const data = [];
+		snapshot.forEach((doc) => {
+			if (!doc.id.includes('\n') && !doc.id.includes('{')) {
+				data.push(mapClipDocument(doc));
+			}
+		});
+
+		data.sort((a, b) => a.qrId.localeCompare(b.qrId));
+
+		return res.json({
+			success: true,
+			data,
+		});
+	} catch (error) {
+		return res.status(500).json({
+			success: false,
+			message: error?.message || 'Unable to load railway clips.',
+		});
+	}
+}
+
 module.exports = {
 	createBatch,
 	listBatches,
+	listClips,
 };

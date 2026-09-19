@@ -159,7 +159,7 @@ export default function Login() {
                 </div>
                 <div className="flex flex-col">
                   <span className="leading-none text-base font-black tracking-wide text-slate-900">
-                    RailClip<span className="text-blue-600">AI</span>
+                    RailClip
                   </span>
                   <span className="font-mono text-[9.5px] font-semibold tracking-wider text-slate-500">
                     INDIAN RAILWAYS FASTENER TELEMETRY
@@ -379,7 +379,7 @@ export default function Login() {
         <footer className="w-full border-t border-slate-200 bg-white px-6 py-4 text-center text-xs text-slate-600">
           <div className="mx-auto flex max-w-7xl items-center justify-between flex-wrap gap-2 text-[11px]">
             <div>
-              <span className="font-semibold text-slate-900">RailClip AI System</span> • Dedicated Track Fastener Integrity Platform for Indian Railways
+              <span className="font-semibold text-slate-900">RailClip System</span> • Dedicated Track Fastener Integrity Platform for Indian Railways
             </div>
             <div className="text-slate-500 font-mono">
               RDSO Spec T-3701 / T-4001 • Broad Gauge 1676mm
