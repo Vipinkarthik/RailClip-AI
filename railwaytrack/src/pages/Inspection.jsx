@@ -739,10 +739,10 @@ export default function Inspection() {
             <h1 className="text-base sm:text-lg font-bold text-slate-900 flex items-center gap-2">
               <span>QR Field Inspection</span>
               <span className="px-2 py-0.5 rounded-full bg-blue-100 text-blue-800 text-[10px] font-mono font-bold border border-blue-200">
-                P-WAY TELEMETRY
+                P-WAY INSPECTION
               </span>
             </h1>
-            <p className="text-xs text-slate-500 font-normal">Scan Elastic Rail Clips and Record Inspection Telemetry in Real Time across {districtOfficer.subtitle}</p>
+            <p className="text-xs text-slate-500 font-normal">Scan Elastic Rail Clips and Record Inspection in Real Time across {districtOfficer.subtitle}</p>
           </div>
 
           <div className="flex items-center space-x-4">
