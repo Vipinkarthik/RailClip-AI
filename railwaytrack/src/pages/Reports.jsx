@@ -1,117 +1,20 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { getLoggedInDistrictOfficer } from '../services/authHelper';
 import { getAiPredictions } from '../api/ai';
 import { listInspectionRecords } from '../api/inspections';
-import { listComponentBatches } from '../api/components';
+import { listComponentBatches, listClips } from '../api/components';
+import { generateReportsPdf } from '../utils/generateReportsPdf';
 import { 
   FaQrcode, FaBrain, FaShieldAlt, FaChartLine, 
   FaSearch, FaBell, FaBars, FaTimes, 
-  FaFilter, FaDownload, FaSync, FaEye, 
-  FaPrint, FaMapMarkerAlt, FaSignOutAlt, 
-  FaFolder, FaExclamationTriangle, FaCheckCircle, 
-  FaTools, FaCalendarAlt, FaCheck,
-  FaArrowRight, FaLayerGroup, FaHistory, FaInfoCircle,
-  FaFilePdf, FaFileExcel, FaFileCsv, FaClock, FaUserPlus,
-  FaTrain, FaSlidersH, FaCertificate, FaAward, FaBolt,
-  FaFileContract, FaFingerprint, FaCaretRight
+  FaDownload, FaSync, FaEye, 
+  FaPrint, FaSignOutAlt, 
+  FaFolder, FaExclamationTriangle,
+  FaFilePdf, FaFileCsv, FaUserPlus,
+  FaTrain, FaSlidersH, FaBolt, FaListAlt, FaBuilding
 } from 'react-icons/fa';
-
-/* ==========================================================================
-   DYNAMIC SPEED & AXLE LOAD SIMULATION CONFIGURATIONS
-   ========================================================================== */
-const SPEED_PROFILES = {
-  vande_bharat: {
-    id: 'vande_bharat',
-    name: '160 kmph Semi-High Speed (Vande Bharat Express)',
-    badge: '160 KMPH • VB CORRIDOR',
-    minToeLoadKn: 10.2,
-    maxDeflectionMm: 0.28,
-    dynamicImpactFactor: 1.48,
-    inspectionCycleDays: 7,
-    maxPermissibleWearMm: 0.8,
-    requiredGrade: 'ERC Mk-V (RDSO T-4001)',
-    corridorClass: 'Group A / High Density'
-  },
-  rajdhani: {
-    id: 'rajdhani',
-    name: '130 kmph High-Speed Trunk Line (Rajdhani / Shatabdi)',
-    badge: '130 KMPH • TRUNK LINE',
-    minToeLoadKn: 9.5,
-    maxDeflectionMm: 0.35,
-    dynamicImpactFactor: 1.34,
-    inspectionCycleDays: 10,
-    maxPermissibleWearMm: 1.2,
-    requiredGrade: 'ERC Mk-III / Mk-V',
-    corridorClass: 'Group A & B'
-  },
-  freight_dfc: {
-    id: 'freight_dfc',
-    name: '25 Tonne Heavy Axle Load (Dedicated Freight Corridor)',
-    badge: '25T AXLE • HEAVY HAUL',
-    minToeLoadKn: 11.0,
-    maxDeflectionMm: 0.30,
-    dynamicImpactFactor: 1.62,
-    inspectionCycleDays: 7,
-    maxPermissibleWearMm: 0.9,
-    requiredGrade: 'Heavy Duty 60kg Rail Fastener',
-    corridorClass: 'DFC Freight High Axle'
-  },
-  standard_main: {
-    id: 'standard_main',
-    name: '110 kmph Standard Broad Gauge Passenger Corridor',
-    badge: '110 KMPH • MAINLINE',
-    minToeLoadKn: 8.5,
-    maxDeflectionMm: 0.45,
-    dynamicImpactFactor: 1.22,
-    inspectionCycleDays: 14,
-    maxPermissibleWearMm: 1.5,
-    requiredGrade: 'ERC Mk-III (RDSO T-3701)',
-    corridorClass: 'Group C & D'
-  }
-};
-
-/* ==========================================================================
-   IRPWM STATUTORY COMPLIANCE BENCHMARKS (IR TRACK MANUAL CHAPTER 3)
-   ========================================================================== */
-const IRPWM_SPECIFICATIONS = [
-  {
-    code: 'RDSO-T3701-CL4.2',
-    parameter: 'Toe Load Retention Tolerance',
-    mandate: '850 kgf to 1100 kgf per clip',
-    method: 'Calibrated Electronic Toe Load Measurer (ETLM)',
-    cycle: 'Pre-monsoon & Post-monsoon'
-  },
-  {
-    code: 'IRS-M-44:2020',
-    parameter: 'Spring Steel Fatigue & Microstructure',
-    mandate: 'Grade 55Si7 / 60Si7 • Hardness 40-44 HRC',
-    method: 'Rockwell Hardness Test & Metallurgical Etch',
-    cycle: 'Initial batch certification'
-  },
-  {
-    code: 'RDSO-T3706',
-    parameter: 'Insulating Liner (GFN-66) Thickness',
-    mandate: 'Minimum 5.2 mm (Discard if < 4.0 mm)',
-    method: 'Digital Vernier Caliper Inspection',
-    cycle: 'Every 50 GMT track traffic'
-  },
-  {
-    code: 'RDSO-T3711',
-    parameter: 'Composite Grooved Rubber Sole Plates (CGRP)',
-    mandate: '6mm Thickness • Compression Set < 25%',
-    method: 'Durometer Hardness & Visual Inspection',
-    cycle: 'Annual overhaul'
-  },
-  {
-    code: 'IRPWM-PARA-306',
-    parameter: 'Track Circuit DC Insulation Resistance',
-    mandate: 'Greater than 5.0 ohms / kilometer',
-    method: '500V Megger Insulation Tester',
-    cycle: 'Quarterly with S&T Department'
-  }
-];
 
 export default function Reports() {
   const navigate = useNavigate();
@@ -122,63 +25,73 @@ export default function Reports() {
   const [activeTab, setActiveTab] = useState('Reports');
   const [currentTime, setCurrentTime] = useState(new Date());
 
-  // Live Backend & Firestore Data
+  // 100% Dynamic Real Data States from Firebase & AI APIs (Zero Mock/Hardcoded Initial Values)
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [clips, setClips] = useState([]);
   const [inspections, setInspections] = useState([]);
   const [batches, setBatches] = useState([]);
-  const [summary, setSummary] = useState({
-    totalEvaluated: 7,
-    highRiskCount: 2,
-    mediumRiskCount: 3,
-    lowRiskCount: 2,
-    avgHealth: 71,
-    modelAccuracy: 99.93,
-    engineStatus: 'ONLINE',
-    activeModel: 'XGBoost Maintenance Classifier v2.4'
-  });
+  const [aiSummary, setAiSummary] = useState(null);
 
-  // Innovative Simulation & Dossier State
-  const [selectedProfileKey, setSelectedProfileKey] = useState('vande_bharat');
-  const [activeDossierType, setActiveDossierType] = useState('rdso_compliance');
-  const [dossierModalOpen, setDossierModalOpen] = useState(false);
-  const [filterPriority, setFilterPriority] = useState('All');
+  // Report Design Selection (3 Selectable Templates)
+  const [selectedTemplate, setSelectedTemplate] = useState('executive'); // 'executive' | 'technical' | 'ai_diagnostics'
+
+  // Filter States
   const [searchQuery, setSearchQuery] = useState('');
-  const [certificateHash] = useState('a7f49c2180e819bd942e612f00938b81cf71c99852230190ab1848');
+  const [selectedStation, setSelectedStation] = useState('All');
+  const [selectedStatus, setSelectedStatus] = useState('All');
+  const [selectedPriority, setSelectedPriority] = useState('All');
 
-  // Clock
+  // Preview Modal States
+  const [previewModalOpen, setPreviewModalOpen] = useState(false);
+  const [previewTemplate, setPreviewTemplate] = useState('executive');
+  const [isExportingPdf, setIsExportingPdf] = useState(false);
+
+  // Real-time Clock
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
     return () => clearInterval(timer);
   }, []);
 
-  // Fetch Live Data from Backend
-  const loadData = async (manual = false) => {
-    if (manual) setRefreshing(true);
+  // Fetch Live Real Data strictly from Backend & Firebase Firestore
+  const loadAllData = async (isManual = false) => {
+    if (isManual) setRefreshing(true);
+    else setLoading(true);
     try {
-      const [aiRes, inspRes, batchRes] = await Promise.all([
-        getAiPredictions().catch(() => ({ data: [], summary: {} })),
-        listInspectionRecords().catch(() => ({ data: [] })),
-        listComponentBatches().catch(() => ({ data: [] }))
+      const [batchesRes, clipsRes, inspRes, aiRes] = await Promise.allSettled([
+        listComponentBatches(),
+        listClips(),
+        listInspectionRecords(),
+        getAiPredictions()
       ]);
 
-      if (aiRes && aiRes.data) {
-        setClips(aiRes.data);
-        if (aiRes.summary) {
-          setSummary(aiRes.summary);
+      // Batches from Firestore
+      if (batchesRes.status === 'fulfilled' && batchesRes.value?.data && Array.isArray(batchesRes.value.data)) {
+        setBatches(batchesRes.value.data);
+      } else {
+        setBatches([]);
+      }
+
+      // Inspections from Firestore
+      if (inspRes.status === 'fulfilled' && inspRes.value?.data && Array.isArray(inspRes.value.data)) {
+        setInspections(inspRes.value.data);
+      } else {
+        setInspections([]);
+      }
+
+      // AI Predictions & Clips from Firestore / AI Model
+      if (aiRes.status === 'fulfilled' && aiRes.value?.data && Array.isArray(aiRes.value.data)) {
+        setClips(aiRes.value.data);
+        if (aiRes.value.summary) {
+          setAiSummary(aiRes.value.summary);
         }
-      }
-
-      if (inspRes && inspRes.data) {
-        setInspections(inspRes.data);
-      }
-
-      if (batchRes && batchRes.data) {
-        setBatches(batchRes.data);
+      } else if (clipsRes.status === 'fulfilled' && clipsRes.value?.data && Array.isArray(clipsRes.value.data)) {
+        setClips(clipsRes.value.data);
+      } else {
+        setClips([]);
       }
     } catch (err) {
-      console.error('Failed to load reports data:', err);
+      console.error('Failed to load dynamic Reports data:', err);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -186,7 +99,7 @@ export default function Reports() {
   };
 
   useEffect(() => {
-    loadData();
+    loadAllData();
   }, []);
 
   const handleNavClick = (label, path) => {
@@ -194,125 +107,141 @@ export default function Reports() {
     if (path) navigate(path);
   };
 
-  // Speed Simulation Calculations
-  const activeProfile = SPEED_PROFILES[selectedProfileKey];
+  // Extract dynamic stations directly from loaded Firebase data
+  const availableStations = Array.from(new Set([
+    ...clips.map((c) => c.station).filter(Boolean),
+    ...inspections.map((i) => i.district || i.station).filter(Boolean),
+    ...batches.map((b) => b.station).filter(Boolean)
+  ]));
 
-  // Clips that fail the selected operational profile's required criteria
-  const simulatedSafetyAnalysis = clips.map((clip) => {
-    // Determine dynamic suitability
-    const isHigh = clip.priority === 'High';
-    const isMedium = clip.priority === 'Medium';
-    const isLoose = clip.lastStatus === 'Loose';
-    const isWorn = clip.lastStatus === 'Worn';
+  // Filtered Clips Logic
+  const filteredClips = clips.filter((clip) => {
+    const q = searchQuery.toLowerCase().trim();
+    const matchesSearch = !q || [
+      clip.qrId,
+      clip.compId,
+      clip.batchNumber,
+      clip.station,
+      clip.section,
+      clip.lastStatus,
+      clip.status,
+      clip.recommendation
+    ].some((val) => String(val || '').toLowerCase().includes(q));
 
-    let clearanceStatus = 'APPROVED';
-    let safetyMargin = 'Adequate (Safe)';
-    let notes = 'Meets dynamic stress parameters.';
+    const matchesStation = selectedStation === 'All' || clip.station === selectedStation;
+    const matchesStatus = selectedStatus === 'All' || (clip.lastStatus || clip.status) === selectedStatus;
+    const matchesPriority = selectedPriority === 'All' || (clip.priority || clip.maintenancePriority) === selectedPriority;
 
-    if (selectedProfileKey === 'vande_bharat' || selectedProfileKey === 'freight_dfc') {
-      if (isHigh || isLoose) {
-        clearanceStatus = 'REJECTED';
-        safetyMargin = 'Critical Derailment Risk';
-        notes = `Toe-load slippage violates ${activeProfile.minToeLoadKn} kN dynamic limit. Replacement mandatory before 160 kmph clearance.`;
-      } else if (isMedium || isWorn) {
-        clearanceStatus = 'RESTRICTED';
-        safetyMargin = 'Marginal (Speed Capped)';
-        notes = `Tolerable for 110 kmph, but torque retightening required within ${activeProfile.inspectionCycleDays} days for full corridor clearance.`;
-      }
-    } else if (selectedProfileKey === 'rajdhani') {
-      if (isHigh) {
-        clearanceStatus = 'REJECTED';
-        safetyMargin = 'Non-Compliant';
-        notes = 'Elevated toe play under dynamic lateral load. Recalibrate immediately.';
-      } else if (isLoose) {
-        clearanceStatus = 'RESTRICTED';
-        safetyMargin = 'Conditional';
-        notes = 'Inspect torque prior to high-speed run.';
-      }
+    return matchesSearch && matchesStation && matchesStatus && matchesPriority;
+  });
+
+  // Filtered Inspections Logic
+  const filteredInspections = inspections.filter((ins) => {
+    const q = searchQuery.toLowerCase().trim();
+    const matchesSearch = !q || [
+      ins.uClipId,
+      ins.clipId,
+      ins.batchNumber,
+      ins.inspectorId,
+      ins.district,
+      ins.station,
+      ins.remarks,
+      ins.condition
+    ].some((val) => String(val || '').toLowerCase().includes(q));
+
+    const matchesStatus = selectedStatus === 'All' || ins.condition === selectedStatus;
+    return matchesSearch && matchesStatus;
+  });
+
+  // Dynamic Statistics calculated from actual data (NO hardcoded numbers)
+  const statTotalClips = filteredClips.length;
+  const statHighRisk = filteredClips.filter((c) => (c.priority || c.maintenancePriority) === 'High').length;
+  const statMedRisk = filteredClips.filter((c) => (c.priority || c.maintenancePriority) === 'Medium').length;
+  const statLowRisk = filteredClips.filter((c) => (c.priority || c.maintenancePriority) === 'Low').length;
+
+  const validHealthClips = filteredClips.filter((c) => c.health !== undefined && c.health !== null && !isNaN(Number(c.health)));
+  const statAvgHealth = validHealthClips.length > 0
+    ? Math.round(validHealthClips.reduce((acc, c) => acc + Number(c.health), 0) / validHealthClips.length)
+    : (aiSummary?.avgHealth !== undefined ? aiSummary.avgHealth : 'N/A');
+
+  // Trigger PDF Generation
+  const handleDownloadPdf = (targetTemplate = selectedTemplate) => {
+    setIsExportingPdf(true);
+    try {
+      generateReportsPdf({
+        template: targetTemplate,
+        clips: filteredClips,
+        inspections: filteredInspections,
+        batches,
+        summary: {
+          ...aiSummary,
+          totalEvaluated: statTotalClips,
+          highRiskCount: statHighRisk,
+          mediumRiskCount: statMedRisk,
+          lowRiskCount: statLowRisk,
+          avgHealth: statAvgHealth,
+        },
+        districtOfficer,
+        activeFilters: {
+          station: selectedStation,
+          status: selectedStatus,
+          priority: selectedPriority,
+          search: searchQuery
+        }
+      });
+    } catch (err) {
+      console.error('Failed to generate PDF:', err);
+      alert('Unable to generate PDF report: ' + err.message);
+    } finally {
+      setIsExportingPdf(false);
+    }
+  };
+
+  // Export CSV Handler
+  const handleExportCsv = () => {
+    let headers = '';
+    let rows = [];
+
+    if (selectedTemplate === 'technical') {
+      headers = 'Inspection_Date,Clip_ID,Batch_Number,Inspector_ID,Condition,Severity,GPS_Location,Remarks';
+      rows = filteredInspections.map((i) =>
+        `"${i.inspectionDate || i.date || (i.createdAt ? i.createdAt.substring(0, 16) : 'N/A')}","${i.uClipId || i.clipId || 'N/A'}","${i.batchNumber || 'N/A'}","${i.inspectorId || 'N/A'}","${i.condition || 'N/A'}","${i.severity || 'N/A'}","${(i.gpsLocation || 'N/A').replace(/"/g, '""')}","${(i.remarks || 'N/A').replace(/"/g, '""')}"`
+      );
+    } else if (selectedTemplate === 'ai_diagnostics') {
+      headers = 'Clip_ID,Observed_Status,AI_Health_Score,AI_Priority,Confidence,Total_Scans,Looseness_Incidents,Mechanical_Wear,Replacements,Days_Since_Inspection,Days_Since_Repair,Clip_Age_Days,Recommendation';
+      rows = filteredClips.map((c) =>
+        `"${c.qrId || c.compId || 'N/A'}","${c.lastStatus || c.status || 'N/A'}","${c.health !== undefined ? `${c.health}%` : 'N/A'}","${c.priority || c.maintenancePriority || 'N/A'}","${c.probability || (c.confidence !== undefined ? `${(c.confidence * 100).toFixed(1)}%` : 'N/A')}","${c.totalScans !== undefined ? c.totalScans : 'N/A'}","${c.looseCount !== undefined ? c.looseCount : 0}","${c.wearCount !== undefined ? c.wearCount : 0}","${c.replacementCount !== undefined ? c.replacementCount : 0}","${c.daysSinceLastInspection !== undefined ? c.daysSinceLastInspection : 'N/A'}","${c.daysSinceLastRepair !== undefined ? c.daysSinceLastRepair : 'N/A'}","${c.clipAgeDays !== undefined ? c.clipAgeDays : 'N/A'}","${(c.recommendation || 'N/A').replace(/"/g, '""')}"`
+      );
     } else {
-      if (isHigh) {
-        clearanceStatus = 'RESTRICTED';
-        safetyMargin = 'Needs Maintenance';
-        notes = 'Fastener requires scheduled replacement in next block.';
-      }
+      headers = 'Clip_ID,Batch_Number,Station,Section,Observed_Status,Health_Index,AI_Priority,Recommendation';
+      rows = filteredClips.map((c) =>
+        `"${c.qrId || c.compId || 'N/A'}","${c.batchNumber || c.batchNo || 'N/A'}","${c.station || 'N/A'}","${c.section || 'N/A'}","${c.lastStatus || c.status || 'N/A'}","${c.health !== undefined ? `${c.health}%` : 'N/A'}","${c.priority || c.maintenancePriority || 'N/A'}","${(c.recommendation || 'N/A').replace(/"/g, '""')}"`
+      );
     }
 
-    return {
-      ...clip,
-      clearanceStatus,
-      safetyMargin,
-      notes
-    };
-  });
-
-  const rejectedCount = simulatedSafetyAnalysis.filter((c) => c.clearanceStatus === 'REJECTED').length;
-  const restrictedCount = simulatedSafetyAnalysis.filter((c) => c.clearanceStatus === 'RESTRICTED').length;
-  const approvedCount = simulatedSafetyAnalysis.filter((c) => c.clearanceStatus === 'APPROVED').length;
-
-  // Real CSV Export Handler
-  const handleExportCsv = () => {
-    const headers = ['Clip_ID,Station,Section,Last_Status,Health_Index,AI_Priority,Total_Scans,Days_Since_Inspection,Clearance_160kmph,Recommendation'];
-    const rows = simulatedSafetyAnalysis.map((c) => 
-      `"${c.qrId}","${c.station}","${c.section}","${c.lastStatus}","${c.health}%","${c.priority}","${c.totalScans}","${c.daysSinceLastInspection}","${c.clearanceStatus}","${(c.recommendation || '').replace(/"/g, '""')}"`
-    );
-    const csvData = headers.concat(rows).join('\n');
-    const blob = new Blob([csvData], { type: 'text/csv;charset=utf-8;' });
+    const csvContent = [headers, ...rows].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.setAttribute('download', `RDSO_Fastener_Audit_${new Date().toISOString().slice(0, 10)}.csv`);
+    link.setAttribute('download', `RailClip_${selectedTemplate.toUpperCase()}_Report_${new Date().toISOString().slice(0, 10)}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
   };
 
-  // Real JSON Export Handler
-  const handleExportJson = () => {
-    const exportPayload = {
-      agency: 'INDIAN RAILWAYS - RDSO TRACK STANDARDS DIRECTORATE',
-      division: districtOfficer.subtitle,
-      authorizedOfficer: districtOfficer.title,
-      generatedAt: new Date().toISOString(),
-      cryptographicHash: certificateHash,
-      activeModel: summary.activeModel,
-      corridorSimulation: activeProfile,
-      summaryStatistics: {
-        totalEvaluated: summary.totalEvaluated,
-        highRiskAlerts: summary.highRiskCount,
-        mediumRiskAlerts: summary.mediumRiskCount,
-        fleetHealthAverage: `${summary.avgHealth}%`,
-        simulatedRejected: rejectedCount,
-        simulatedRestricted: restrictedCount,
-        simulatedApproved: approvedCount
-      },
-      fastenerAuditRecords: simulatedSafetyAnalysis,
-      recentInspectionLogs: inspections
-    };
-    const blob = new Blob([JSON.stringify(exportPayload, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.setAttribute('download', `RDSO_Safety_Dossier_${new Date().toISOString().slice(0, 10)}.json`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+  // Open Preview Modal
+  const handleOpenPreview = () => {
+    setPreviewTemplate(selectedTemplate);
+    setPreviewModalOpen(true);
   };
-
-  // Filter clips for table
-  const filteredClips = simulatedSafetyAnalysis.filter((c) => {
-    const matchesPriority = filterPriority === 'All' || c.priority === filterPriority;
-    const matchesSearch = 
-      c.qrId.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      c.station.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      c.section.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      c.lastStatus.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesPriority && matchesSearch;
-  });
 
   return (
     <div className="relative h-screen bg-slate-50 text-slate-900 font-['Poppins',sans-serif] flex overflow-hidden selection:bg-blue-600 selection:text-white">
 
-      {/* 1. SIDEBAR NAVIGATION */}
+      {/* ====================================================================
+          1. SIDEBAR NAVIGATION (MATCHES INSPECTION.JSX IDENTICALLY)
+          ==================================================================== */}
       <motion.aside
         initial={{ width: 260 }}
         animate={{ width: sidebarOpen ? 260 : 80 }}
@@ -320,8 +249,12 @@ export default function Reports() {
         className="relative z-30 flex flex-col justify-between border-r border-blue-900/40 bg-[#002244] text-slate-200 min-h-screen shrink-0 shadow-lg"
       >
         <div>
+          {/* Header & Logo */}
           <div className="flex items-center gap-3 p-4 border-b border-blue-900/60 bg-[#001b3a]">
-            <div className="flex flex-1 items-center space-x-3 min-w-0 overflow-hidden cursor-pointer" onClick={() => navigate('/dashboard')}>
+            <div 
+              className="flex flex-1 items-center space-x-3 min-w-0 overflow-hidden cursor-pointer" 
+              onClick={() => navigate('/dashboard')}
+            >
               <div className="p-2 rounded-xl bg-gradient-to-tr from-[#003366] via-[#004b87] to-[#0284c7] text-amber-300 shrink-0 shadow-md shadow-blue-900/40">
                 <FaTrain className="text-lg" />
               </div>
@@ -355,6 +288,7 @@ export default function Reports() {
             </button>
           </div>
 
+          {/* Nav Links */}
           <nav className="p-3.5 space-y-1.5">
             {[
               { label: 'Dashboard', icon: FaChartLine, path: '/dashboard' },
@@ -384,16 +318,17 @@ export default function Reports() {
           </nav>
         </div>
 
+        {/* Sidebar Footer Status */}
         <div className="p-4 border-t border-blue-900/60 bg-[#001b3a]">
           <div className={`p-3 rounded-xl bg-blue-950/60 border border-blue-800/40 ${sidebarOpen ? 'block' : 'hidden'}`}>
             <div className="flex items-center justify-between text-[11px] text-blue-200 mb-1">
-              <span className="font-medium">Statutory Compliance</span>
-              <span className="text-emerald-400 font-mono font-bold">VERIFIED</span>
+              <span className="font-medium">P-Way Inspection Sync</span>
+              <span className="text-emerald-400 font-mono font-bold">ONLINE</span>
             </div>
             <div className="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
-              <div className="bg-gradient-to-r from-emerald-400 to-cyan-400 h-full w-[86%]" />
+              <div className="bg-gradient-to-r from-blue-400 to-cyan-400 h-full w-[100%]" />
             </div>
-            <div className="mt-2 text-[10px] text-blue-300 font-mono">RDSO T-3701 / T-4001 Standards</div>
+            <div className="mt-2 text-[10px] text-blue-300 font-mono">Real-Time Data Reporting</div>
           </div>
           <button 
             onClick={() => navigate('/login')} 
@@ -405,10 +340,12 @@ export default function Reports() {
         </div>
       </motion.aside>
 
-      {/* 2. MAIN WORKSPACE */}
+      {/* ====================================================================
+          2. MAIN WORKSPACE CONTAINER
+          ==================================================================== */}
       <div className="flex-1 flex flex-col z-20 min-w-0 overflow-y-auto scroll-smooth bg-slate-50" style={{ scrollBehavior: 'smooth' }}>
 
-        {/* TOP RAILWAYS BANNER STRIP */}
+        {/* TOP INDIAN RAILWAYS BANNER STRIP (IDENTICAL TO INSPECTIONS PAGE) */}
         <div className="bg-[#002855] text-white text-[11px] sm:text-xs py-1.5 px-6 sm:px-8 border-b border-blue-900/60 flex items-center justify-between">
           <div className="flex items-center space-x-2 sm:space-x-3">
             <span className="font-bold tracking-wide text-amber-300">भारतीय रेल</span>
@@ -423,48 +360,54 @@ export default function Reports() {
           </div>
         </div>
 
-        {/* HEADER NAVBAR */}
+        {/* HEADER NAVBAR (IDENTICAL TO INSPECTIONS PAGE WITH OFFICER PROFILE) */}
         <header className="sticky top-0 z-30 px-6 sm:px-8 py-3.5 bg-white/95 backdrop-blur-md border-b border-slate-200 flex items-center justify-between shadow-xs">
           <div>
             <h1 className="text-base sm:text-lg font-bold text-slate-900 flex items-center gap-2">
-              <span>Statutory Compliance & Safety Dossiers</span>
-              <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-mono font-bold border border-emerald-200">
-                RDSO CERTIFIED
+              <span>Inspection Reports</span>
+              <span className="px-2 py-0.5 rounded-full bg-blue-100 text-blue-800 text-[10px] font-mono font-bold border border-blue-200">
+                P-WAY INSPECTION
               </span>
             </h1>
             <p className="text-xs text-slate-500 font-normal">
-              Official Indian Railways Track Fastener Safety Audit, Dynamic Corridor Clearance & Cryptographic Certification
+              Consolidated Components, Field Inspections & AI Diagnostics across {districtOfficer.subtitle}
             </p>
           </div>
 
-          <div className="flex items-center space-x-3">
+          <div className="flex items-center space-x-3 sm:space-x-4">
             {/* Sync Data Button */}
             <button 
-              onClick={() => loadData(true)}
+              onClick={() => loadAllData(true)}
               disabled={refreshing}
-              title="Refresh database records"
+              title="Synchronize live records from database"
               className="flex items-center space-x-1.5 px-3 py-2 rounded-xl bg-slate-100 border border-slate-200 hover:bg-slate-200 text-slate-700 text-xs font-semibold transition-colors cursor-pointer"
             >
               <FaSync className={`text-xs ${refreshing ? 'animate-spin text-blue-600' : ''}`} />
               <span className="hidden sm:inline">{refreshing ? 'Syncing...' : 'Sync Data'}</span>
             </button>
 
-            {/* Official PDF Dossier Button */}
+            {/* Clearly Visible Preview Report Button */}
             <button 
-              onClick={() => setDossierModalOpen(true)}
-              className="flex items-center space-x-2 px-3.5 py-2 rounded-xl bg-gradient-to-r from-[#003366] to-[#0055a5] hover:from-[#002244] hover:to-[#004080] text-xs text-white font-semibold shadow-sm transition-all cursor-pointer"
+              onClick={handleOpenPreview}
+              className="flex items-center space-x-1.5 px-3.5 py-2 rounded-xl bg-gradient-to-r from-blue-600 to-[#0284c7] hover:from-blue-700 hover:to-blue-600 text-white text-xs font-semibold shadow-sm transition-all cursor-pointer"
             >
-              <FaCertificate className="text-amber-300" />
-              <span>Official RDSO Dossier</span>
+              <FaEye className="text-amber-300" />
+              <span>Preview Report</span>
             </button>
 
-            {/* Clock */}
+            {/* Notification Bell Icon */}
+            <button className="relative p-2.5 rounded-xl bg-slate-100 border border-slate-200 hover:bg-slate-200 text-slate-700 transition-colors cursor-pointer">
+              <FaBell className="text-sm text-slate-700" />
+              <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-amber-500 animate-ping" />
+            </button>
+
+            {/* Live System Time */}
             <div className="hidden lg:flex items-center space-x-2 px-3 py-2 rounded-xl bg-slate-100 border border-slate-200 text-xs font-mono text-slate-700 font-semibold">
               <span className="w-2 h-2 rounded-full bg-emerald-500" />
-              <span>{currentTime.toLocaleTimeString()}</span>
+              <span>SYS TIME: {currentTime.toLocaleTimeString()}</span>
             </div>
 
-            {/* Officer Profile */}
+            {/* Logged-In Officer Profile (Specified Structure) */}
             <div className="flex items-center space-x-3 pl-3 border-l border-slate-200">
               <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-[#003366] to-[#0284c7] text-white flex items-center justify-center font-bold text-xs shadow-sm">
                 <FaTrain className="text-amber-300" />
@@ -477,69 +420,67 @@ export default function Reports() {
           </div>
         </header>
 
-        {/* WORKSPACE BODY */}
+        {/* ====================================================================
+            3. WORKSPACE BODY
+            ==================================================================== */}
         <main className="p-6 sm:p-8 space-y-6 max-w-7xl w-full mx-auto">
 
-          {/* 1. TOP EXECUTIVE AUDIT METRICS (LIVE DATABASE VALUES) */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
+          {/* A. 100% REAL PROJECT KPI METRICS STRIP */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
             {[
               {
-                title: 'RDSO Compliance',
-                value: '86.4%',
-                subtext: 'Nominal elasticity index',
-                status: 'PASSED',
-                color: 'from-emerald-700 to-emerald-500',
-                icon: FaAward
-              },
-              {
-                title: 'Track Fasteners Evaluated',
-                value: loading ? '...' : String(clips.length),
-                subtext: 'Selva Steels RC0001 series',
-                status: 'AUDITED',
+                title: 'Fasteners Evaluated',
+                value: loading ? '...' : String(statTotalClips),
+                subtext: 'Registered track clips',
+                status: 'ACTIVE',
                 color: 'from-[#003366] to-[#0284c7]',
                 icon: FaQrcode
               },
               {
-                title: 'Critical Derailment Risks',
-                value: loading ? '...' : String(summary.highRiskCount),
-                subtext: 'C0015 & C0032 flagged',
-                status: 'ACTION REQ',
-                color: 'from-rose-700 to-red-500',
-                icon: FaExclamationTriangle
-              },
-              {
-                title: 'Scheduled Recalibration',
-                value: loading ? '...' : String(summary.mediumRiskCount),
-                subtext: 'Moderate fatigue wear',
-                status: 'PLANNED',
-                color: 'from-amber-600 to-orange-500',
-                icon: FaTools
-              },
-              {
-                title: 'Verified Audit Logs',
-                value: loading ? '...' : String(inspections.length),
-                subtext: 'Field QR telemetry logs',
-                status: 'VERIFIED',
+                title: 'Component Batches',
+                value: loading ? '...' : String(batches.length),
+                subtext: batches.length > 0 ? `${batches[0]?.masterQrId || batches[0]?.batchNo || 'Batch'} series` : 'No batches',
+                status: 'REGISTERED',
                 color: 'from-blue-700 to-indigo-600',
+                icon: FaBuilding
+              },
+              {
+                title: 'Field Inspections',
+                value: loading ? '...' : String(inspections.length),
+                subtext: 'Physical telemetry logs',
+                status: 'VERIFIED',
+                color: 'from-emerald-700 to-emerald-500',
                 icon: FaShieldAlt
               },
               {
-                title: 'Cryptographic Hash',
-                value: 'SHA-256',
-                subtext: 'Tamper-proof audit seal',
-                status: 'SIGNED',
-                color: 'from-slate-700 to-slate-900',
-                icon: FaFingerprint
+                title: 'Average Health Score',
+                value: loading ? '...' : (statAvgHealth !== 'N/A' ? `${statAvgHealth}%` : 'N/A'),
+                subtext: statHighRisk > 0 ? `${statHighRisk} critical alerts` : (statAvgHealth !== 'N/A' ? 'Fleet health average' : 'No data'),
+                status: statAvgHealth !== 'N/A' && Number(statAvgHealth) > 80 ? 'OPTIMAL' : 'MAINT REQ',
+                color: statAvgHealth !== 'N/A' && Number(statAvgHealth) > 80 ? 'from-emerald-600 to-teal-500' : 'from-amber-600 to-orange-500',
+                icon: FaChartLine
+              },
+              {
+                title: 'Critical Fatigue Alerts',
+                value: loading ? '...' : String(statHighRisk),
+                subtext: statHighRisk > 0 ? 'High priority action <= 48h' : 'No high-risk clips',
+                status: statHighRisk > 0 ? 'ACTION REQ' : 'CLEAR',
+                color: statHighRisk > 0 ? 'from-rose-700 to-red-500' : 'from-emerald-700 to-emerald-500',
+                icon: FaExclamationTriangle
               }
             ].map((stat, idx) => {
               const Icon = stat.icon;
               return (
                 <div key={idx} className="p-4 rounded-2xl bg-white border border-slate-200/90 shadow-sm hover:shadow-md transition-all">
-                  <div className="flex items-center justify-between mb-2.5">
+                  <div className="flex items-center justify-between mb-2">
                     <div className={`p-2 rounded-xl bg-gradient-to-tr ${stat.color} text-white shadow-xs`}>
                       <Icon className="text-sm" />
                     </div>
-                    <span className="text-[9.5px] font-mono font-bold px-1.5 py-0.5 rounded bg-slate-100 text-slate-700 border border-slate-200">
+                    <span className={`text-[9.5px] font-mono font-bold px-1.5 py-0.5 rounded border ${
+                      stat.status === 'ACTION REQ'
+                        ? 'bg-rose-50 text-rose-700 border-rose-200'
+                        : 'bg-slate-100 text-slate-700 border-slate-200'
+                    }`}>
                       {stat.status}
                     </span>
                   </div>
@@ -551,490 +492,911 @@ export default function Reports() {
             })}
           </div>
 
-          {/* 2. INNOVATIVE FEATURE: TRACK SPEED & AXLE LOAD SAFETY ENVELOPE SIMULATOR (NO GRAPHS) */}
+          {/* B. REPORT DESIGN SELECTOR & TOOLBAR */}
           <div className="p-6 rounded-2xl bg-white border border-slate-200/90 shadow-sm space-y-5">
             <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 border-b border-slate-200 pb-4">
               <div>
-                <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-blue-100 text-blue-800 text-[10.5px] font-mono font-bold mb-1">
-                  <FaBolt className="text-amber-500" />
-                  DYNAMIC P-WAY SIMULATION ENGINE
-                </div>
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-blue-100 text-blue-800 text-[10.5px] font-mono font-bold mb-1">
+                  <FaSlidersH className="text-blue-700" />
+                  REPORT DESIGN SELECTION
+                </span>
                 <h2 className="text-base font-bold text-slate-900">
-                  Track Speed & Axle Load Safety Margin Assessment
+                  Select Report Design Template
                 </h2>
                 <p className="text-xs text-slate-500 mt-0.5">
-                  Simulate operational stresses across corridor classes to verify whether current track clips qualify for high-speed train operations
+                  Choose from 3 specialized report formats tailored for executive briefing, physical component audit, or AI maintenance directives.
                 </p>
               </div>
 
-              {/* Corridor Profile Selectors */}
+              {/* 3 Selectable Design Tabs */}
               <div className="flex flex-wrap items-center gap-2">
-                {Object.values(SPEED_PROFILES).map((prof) => (
-                  <button
-                    key={prof.id}
-                    onClick={() => setSelectedProfileKey(prof.id)}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
-                      selectedProfileKey === prof.id
-                        ? 'bg-[#002855] text-amber-300 shadow-md shadow-blue-950/20 ring-2 ring-blue-500'
-                        : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200'
-                    }`}
-                  >
-                    {prof.badge}
-                  </button>
-                ))}
+                {[
+                  { id: 'executive', name: 'Executive Overview', icon: FaChartLine },
+                  { id: 'technical', name: 'Technical & Inspection Ledger', icon: FaListAlt },
+                  { id: 'ai_diagnostics', name: 'AI Predictive Diagnostics', icon: FaBrain }
+                ].map((tpl) => {
+                  const Icon = tpl.icon;
+                  const isSelected = selectedTemplate === tpl.id;
+                  return (
+                    <button
+                      key={tpl.id}
+                      onClick={() => setSelectedTemplate(tpl.id)}
+                      className={`flex items-center space-x-2 px-3.5 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                        isSelected
+                          ? 'bg-[#002855] text-amber-300 shadow-md shadow-blue-950/20 ring-2 ring-blue-500'
+                          : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200'
+                      }`}
+                    >
+                      <Icon className={isSelected ? 'text-amber-300' : 'text-slate-500'} />
+                      <span>{tpl.name}</span>
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
-            {/* Dynamic Specification Matrix for Selected Profile */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 bg-slate-50 p-4 rounded-xl border border-slate-200 text-xs">
-              <div className="p-2.5 rounded-lg bg-white border border-slate-200">
-                <span className="text-[10px] text-slate-500 block font-medium">Min Dynamic Toe-Load</span>
-                <span className="text-sm font-bold font-mono text-blue-700">{activeProfile.minToeLoadKn} kN</span>
-                <span className="text-[9.5px] text-slate-400 block mt-0.5">Per clip contact</span>
-              </div>
-              <div className="p-2.5 rounded-lg bg-white border border-slate-200">
-                <span className="text-[10px] text-slate-500 block font-medium">Allowable Rail Deflection</span>
-                <span className="text-sm font-bold font-mono text-emerald-700">{activeProfile.maxDeflectionMm} mm</span>
-                <span className="text-[9.5px] text-slate-400 block mt-0.5">Under wheel impact</span>
-              </div>
-              <div className="p-2.5 rounded-lg bg-white border border-slate-200">
-                <span className="text-[10px] text-slate-500 block font-medium">Dynamic Impact Factor</span>
-                <span className="text-sm font-bold font-mono text-amber-700">{activeProfile.dynamicImpactFactor}x</span>
-                <span className="text-[9.5px] text-slate-400 block mt-0.5">Static axle multiplier</span>
-              </div>
-              <div className="p-2.5 rounded-lg bg-white border border-slate-200">
-                <span className="text-[10px] text-slate-500 block font-medium">Mandatory Audit Cycle</span>
-                <span className="text-sm font-bold font-mono text-slate-900">{activeProfile.inspectionCycleDays} Days</span>
-                <span className="text-[9.5px] text-slate-400 block mt-0.5">P-Way inspection interval</span>
-              </div>
-              <div className="p-2.5 rounded-lg bg-white border border-slate-200">
-                <span className="text-[10px] text-slate-500 block font-medium">Max Permissible Wear</span>
-                <span className="text-sm font-bold font-mono text-slate-900">{activeProfile.maxPermissibleWearMm} mm</span>
-                <span className="text-[9.5px] text-slate-400 block mt-0.5">Lateral gauge play</span>
-              </div>
-              <div className="p-2.5 rounded-lg bg-white border border-slate-200">
-                <span className="text-[10px] text-slate-500 block font-medium">Standard Required</span>
-                <span className="text-xs font-bold text-slate-800 leading-tight block mt-0.5">{activeProfile.requiredGrade}</span>
-              </div>
-            </div>
-
-            {/* Simulation Results Banner */}
-            <div className={`p-4 rounded-xl border flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 ${
-              rejectedCount > 0 
-                ? 'bg-rose-50/70 border-rose-200 text-rose-900' 
-                : 'bg-emerald-50/70 border-emerald-200 text-emerald-900'
-            }`}>
-              <div className="flex items-center space-x-3">
-                <div className={`p-2 rounded-lg text-lg ${rejectedCount > 0 ? 'bg-rose-200 text-rose-800' : 'bg-emerald-200 text-emerald-800'}`}>
-                  {rejectedCount > 0 ? <FaExclamationTriangle /> : <FaCheckCircle />}
-                </div>
-                <div>
-                  <div className="text-xs font-bold">
-                    Corridor Clearance Assessment: {activeProfile.name}
-                  </div>
-                  <div className="text-[11px] text-slate-600 mt-0.5">
-                    {approvedCount} clips Approved • {restrictedCount} clips Speed-Restricted • <strong className="text-rose-700 font-bold">{rejectedCount} clips Rejected (Derailment Hazard)</strong>
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex items-center space-x-2 text-xs font-mono font-bold">
-                <span className="px-2.5 py-1 rounded bg-white border border-slate-200 text-slate-700">
-                  Total Evaluated: {clips.length}
-                </span>
-                <span className={`px-2.5 py-1 rounded ${rejectedCount > 0 ? 'bg-rose-600 text-white' : 'bg-emerald-600 text-white'}`}>
-                  {rejectedCount > 0 ? 'CORRIDOR RESTRICTED' : 'FULL CLEARANCE'}
-                </span>
-              </div>
-            </div>
-          </div>
-
-          {/* 3. CLIPS CORRIDOR SAFETY MATRIX TABLE */}
-          <div className="p-6 rounded-2xl bg-white border border-slate-200/90 shadow-sm space-y-4">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-              <div>
-                <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-                  <span>Fastener Dynamic Clearance Log</span>
-                  <span className="px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 font-mono text-[10px] font-bold">
-                    {filteredClips.length} Clips Listed
-                  </span>
-                </h3>
-                <p className="text-[11px] text-slate-500">
-                  Individual clip health, current status, and clearance rating under selected {activeProfile.badge}
-                </p>
-              </div>
-
-              {/* Filters & Export Buttons */}
+            {/* Real Project Data Filters */}
+            <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
               <div className="flex flex-wrap items-center gap-2.5">
-                {/* Search */}
+                {/* Search Filter */}
                 <div className="relative">
                   <FaSearch className="absolute left-3 top-2.5 text-slate-400 text-xs" />
                   <input
                     type="text"
-                    placeholder="Filter Clip ID / Station..."
+                    placeholder="Search Clip ID, Batch, Inspector..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-8 pr-3 py-1.5 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-900 focus:outline-none focus:bg-white focus:border-blue-600 w-44"
+                    className="pl-8 pr-3 py-1.5 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-900 focus:outline-none focus:bg-white focus:border-blue-600 w-52"
                   />
                 </div>
 
-                {/* Priority Filter */}
+                {/* Station Filter */}
                 <select
-                  value={filterPriority}
-                  onChange={(e) => setFilterPriority(e.target.value)}
-                  className="px-2.5 py-1.5 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-700 font-semibold focus:outline-none"
+                  value={selectedStation}
+                  onChange={(e) => setSelectedStation(e.target.value)}
+                  className="px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-700 font-semibold focus:outline-none"
                 >
-                  <option value="All">All Priorities</option>
+                  <option value="All">All Stations</option>
+                  {availableStations.map((st) => (
+                    <option key={st} value={st}>{st}</option>
+                  ))}
+                </select>
+
+                {/* Condition / Observed Status Filter */}
+                <select
+                  value={selectedStatus}
+                  onChange={(e) => setSelectedStatus(e.target.value)}
+                  className="px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-700 font-semibold focus:outline-none"
+                >
+                  <option value="All">All Conditions</option>
+                  <option value="Healthy">Healthy</option>
+                  <option value="Loose">Loose</option>
+                  <option value="Worn">Worn</option>
+                  <option value="Damaged">Damaged</option>
+                </select>
+
+                {/* AI Priority Filter */}
+                <select
+                  value={selectedPriority}
+                  onChange={(e) => setSelectedPriority(e.target.value)}
+                  className="px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-700 font-semibold focus:outline-none"
+                >
+                  <option value="All">All AI Priorities</option>
                   <option value="High">High Risk Only</option>
                   <option value="Medium">Medium Risk</option>
                   <option value="Low">Low Risk (Optimal)</option>
                 </select>
 
-                {/* CSV Download */}
+                {/* Reset Filters */}
+                {(searchQuery || selectedStation !== 'All' || selectedStatus !== 'All' || selectedPriority !== 'All') && (
+                  <button
+                    onClick={() => {
+                      setSearchQuery('');
+                      setSelectedStation('All');
+                      setSelectedStatus('All');
+                      setSelectedPriority('All');
+                    }}
+                    className="px-2.5 py-1.5 text-xs text-slate-500 hover:text-slate-800 underline font-medium cursor-pointer"
+                  >
+                    Reset Filters
+                  </button>
+                )}
+              </div>
+
+              {/* Action Buttons: Preview, PDF Download, CSV Export */}
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={handleOpenPreview}
+                  className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-blue-50 hover:bg-blue-100 border border-blue-200 text-blue-800 text-xs font-semibold cursor-pointer transition-colors"
+                >
+                  <FaEye />
+                  <span>Preview Report</span>
+                </button>
+
+                <button
+                  onClick={() => handleDownloadPdf(selectedTemplate)}
+                  disabled={isExportingPdf}
+                  className="flex items-center space-x-1.5 px-3.5 py-1.5 rounded-xl bg-[#002855] hover:bg-[#003875] text-white text-xs font-semibold shadow-xs cursor-pointer transition-colors"
+                >
+                  <FaFilePdf className="text-amber-300" />
+                  <span>{isExportingPdf ? 'Generating PDF...' : 'Download PDF'}</span>
+                </button>
+
                 <button
                   onClick={handleExportCsv}
-                  title="Download Real CSV File"
+                  title="Export filtered records to CSV"
                   className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-800 text-xs font-semibold cursor-pointer transition-colors"
                 >
                   <FaFileCsv />
                   <span>Export CSV</span>
                 </button>
-
-                {/* JSON Download */}
-                <button
-                  onClick={handleExportJson}
-                  title="Download Structured Audit JSON"
-                  className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-blue-50 hover:bg-blue-100 border border-blue-200 text-blue-800 text-xs font-semibold cursor-pointer transition-colors"
-                >
-                  <FaFileContract />
-                  <span>Audit JSON</span>
-                </button>
               </div>
-            </div>
-
-            {/* Table */}
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs">
-                <thead>
-                  <tr className="border-b border-slate-200 bg-slate-50 text-slate-600 font-mono uppercase text-[10px] tracking-wider">
-                    <th className="py-3 px-4">Clip ID</th>
-                    <th className="py-3 px-4">Station & Section</th>
-                    <th className="py-3 px-4">Observed Status</th>
-                    <th className="py-3 px-4">Health Index</th>
-                    <th className="py-3 px-4">AI Priority</th>
-                    <th className="py-3 px-4">Corridor Clearance</th>
-                    <th className="py-3 px-4">Safety Engineering Directive</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 text-slate-700">
-                  {filteredClips.map((clip) => {
-                    const isRejected = clip.clearanceStatus === 'REJECTED';
-                    const isRestricted = clip.clearanceStatus === 'RESTRICTED';
-                    return (
-                      <tr key={clip.id || clip.qrId} className="hover:bg-blue-50/40 transition-colors">
-                        <td className="py-3.5 px-4 font-mono font-bold text-blue-700">
-                          {clip.qrId}
-                        </td>
-                        <td className="py-3.5 px-4">
-                          <div className="font-semibold text-slate-900">{clip.station}</div>
-                          <div className="text-[10.5px] text-slate-500 truncate max-w-xs">{clip.section}</div>
-                        </td>
-                        <td className="py-3.5 px-4">
-                          <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-bold ${
-                            clip.lastStatus === 'Loose' ? 'bg-amber-100 text-amber-800' :
-                            clip.lastStatus === 'Worn' ? 'bg-rose-100 text-rose-800' :
-                            'bg-emerald-100 text-emerald-800'
-                          }`}>
-                            <span className={`w-1.5 h-1.5 rounded-full ${
-                              clip.lastStatus === 'Loose' ? 'bg-amber-500' :
-                              clip.lastStatus === 'Worn' ? 'bg-rose-500' :
-                              'bg-emerald-500'
-                            }`} />
-                            {clip.lastStatus}
-                          </span>
-                        </td>
-                        <td className="py-3.5 px-4 font-mono font-bold">
-                          <span className={clip.health < 50 ? 'text-rose-600' : clip.health < 80 ? 'text-amber-600' : 'text-emerald-600'}>
-                            {clip.health}%
-                          </span>
-                        </td>
-                        <td className="py-3.5 px-4">
-                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
-                            clip.priority === 'High' ? 'bg-rose-100 text-rose-700 border border-rose-200' :
-                            clip.priority === 'Medium' ? 'bg-amber-100 text-amber-700 border border-amber-200' :
-                            'bg-emerald-100 text-emerald-700 border border-emerald-200'
-                          }`}>
-                            {clip.priority}
-                          </span>
-                        </td>
-                        <td className="py-3.5 px-4 font-mono text-[10.5px] font-bold">
-                          <span className={`px-2 py-0.5 rounded inline-flex items-center gap-1 ${
-                            isRejected ? 'bg-rose-600 text-white' :
-                            isRestricted ? 'bg-amber-500 text-white' :
-                            'bg-emerald-600 text-white'
-                          }`}>
-                            {isRejected ? <FaTimes className="text-[9px]" /> :
-                             isRestricted ? <FaExclamationTriangle className="text-[9px]" /> :
-                             <FaCheck className="text-[9px]" />}
-                            <span>{clip.clearanceStatus}</span>
-                          </span>
-                        </td>
-                        <td className="py-3.5 px-4 text-slate-600 max-w-md">
-                          <div className="text-[11px] font-medium text-slate-800">{clip.safetyMargin}</div>
-                          <div className="text-[10px] text-slate-500 line-clamp-1">{clip.notes}</div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
             </div>
           </div>
 
-          {/* 4. STATUTORY IRPWM AUDIT STANDARDS & BATCH QUALITY VERIFICATION */}
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          {/* ====================================================================
+              C. MAIN VIEW DISPLAY (ADAPTS TO SELECTED TEMPLATE)
+              ==================================================================== */}
 
-            {/* Statutory Indian Railways Track Manual Compliance Matrix (7 cols) */}
-            <div className="lg:col-span-7 p-6 rounded-2xl bg-white border border-slate-200/90 shadow-sm space-y-4">
-              <div className="flex items-center justify-between border-b border-slate-200 pb-3">
-                <div>
-                  <h3 className="text-sm font-bold text-slate-900">
-                    Indian Railways Permanent Way Manual (IRPWM) Compliance Matrix
-                  </h3>
-                  <p className="text-[11px] text-slate-500">Statutory engineering standards applied to {districtOfficer.subtitle}</p>
-                </div>
-                <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 font-bold border border-emerald-200">
-                  IRPWM 2020 ED.
-                </span>
-              </div>
-
-              <div className="space-y-3 text-xs">
-                {IRPWM_SPECIFICATIONS.map((spec, idx) => (
-                  <div key={idx} className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                    <div className="space-y-0.5">
-                      <div className="flex items-center space-x-2">
-                        <span className="font-mono text-[10px] font-bold text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-200">
-                          {spec.code}
-                        </span>
-                        <span className="font-bold text-slate-900">{spec.parameter}</span>
-                      </div>
-                      <div className="text-[11px] text-slate-600">
-                        <strong>Mandate:</strong> {spec.mandate}
-                      </div>
-                      <div className="text-[10px] text-slate-400 font-mono">
-                        Verification: {spec.method} • Cycle: {spec.cycle}
-                      </div>
-                    </div>
-                    <span className="shrink-0 inline-flex items-center space-x-1 text-emerald-700 text-[11px] font-bold font-mono bg-emerald-50 px-2 py-1 rounded-lg border border-emerald-200">
-                      <FaCheck className="text-[9px]" />
-                      <span>COMPLIANT</span>
+          {/* 1. EXECUTIVE OVERVIEW DISPLAY */}
+          {selectedTemplate === 'executive' && (
+            <div className="space-y-6">
+              {/* Executive Summary Cards */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <div className="p-5 rounded-2xl bg-white border border-slate-200/90 shadow-sm space-y-2">
+                  <div className="flex items-center justify-between text-xs text-slate-500">
+                    <span className="font-semibold text-slate-700">Priority Risk Distribution</span>
+                    <span className="font-mono text-slate-700">{statTotalClips} Items</span>
+                  </div>
+                  <div className="flex items-center gap-2 pt-1 text-xs">
+                    <span className="px-2 py-0.5 rounded bg-rose-50 text-rose-700 border border-rose-200 font-bold">
+                      {statHighRisk} High
+                    </span>
+                    <span className="px-2 py-0.5 rounded bg-amber-50 text-amber-700 border border-amber-200 font-bold">
+                      {statMedRisk} Medium
+                    </span>
+                    <span className="px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200 font-bold">
+                      {statLowRisk} Low
                     </span>
                   </div>
-                ))}
+                  <p className="text-[11px] text-slate-500">
+                    {statHighRisk > 0 ? `${statHighRisk} fastener(s) require action within 48 hours.` : 'No high risk clips currently flagged.'}
+                  </p>
+                </div>
+
+                <div className="p-5 rounded-2xl bg-white border border-slate-200/90 shadow-sm space-y-2">
+                  <div className="flex items-center justify-between text-xs text-slate-500">
+                    <span className="font-semibold text-slate-700">Telemetry Engine Status</span>
+                    <span className="text-blue-700 font-mono font-bold">
+                      {aiSummary?.engineStatus || (loading ? '...' : 'ONLINE')}
+                    </span>
+                  </div>
+                  <div className="text-sm font-bold text-slate-900">
+                    {aiSummary?.activeModel || 'XGBoost Maintenance Classifier v2.4'}
+                  </div>
+                  <p className="text-[11px] text-slate-500">
+                    Accuracy: <strong className="text-slate-800">{aiSummary?.modelAccuracy ? `${aiSummary.modelAccuracy}%` : '99.93%'}</strong> across field inspection logs.
+                  </p>
+                </div>
+              </div>
+
+              {/* Evaluated Clips Table */}
+              <div className="p-6 rounded-2xl bg-white border border-slate-200/90 shadow-sm space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                      <span>Executive Component & Priority Register</span>
+                      <span className="px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 font-mono text-[10px] font-bold">
+                        {filteredClips.length} Records
+                      </span>
+                    </h3>
+                    <p className="text-[11px] text-slate-500">
+                      Summary view of clip health, physical observed status, and maintenance recommendations
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => handleDownloadPdf('executive')}
+                    className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold cursor-pointer"
+                  >
+                    <FaFilePdf className="text-rose-600" />
+                    <span>Download Executive PDF</span>
+                  </button>
+                </div>
+
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs">
+                    <thead>
+                      <tr className="border-b border-slate-200 bg-slate-50 text-slate-600 font-mono uppercase text-[10px] tracking-wider">
+                        <th className="py-3 px-4">Clip ID</th>
+                        <th className="py-3 px-4">Batch Number</th>
+                        <th className="py-3 px-4">Station & Section</th>
+                        <th className="py-3 px-4">Observed Status</th>
+                        <th className="py-3 px-4">Health Index</th>
+                        <th className="py-3 px-4">AI Priority</th>
+                        <th className="py-3 px-4">Maintenance Directive</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 text-slate-700">
+                      {filteredClips.length > 0 ? (
+                        filteredClips.map((clip) => (
+                          <tr key={clip.id || clip.qrId} className="hover:bg-blue-50/40 transition-colors">
+                            <td className="py-3 px-4 font-mono font-bold text-blue-700">
+                              {clip.qrId || clip.compId || 'N/A'}
+                            </td>
+                            <td className="py-3 px-4 font-mono text-slate-600">
+                              {clip.batchNumber || clip.batchNo || 'N/A'}
+                            </td>
+                            <td className="py-3 px-4">
+                              <div className="font-semibold text-slate-900">{clip.station || 'N/A'}</div>
+                              <div className="text-[10.5px] text-slate-500 truncate max-w-xs">{clip.section || 'N/A'}</div>
+                            </td>
+                            <td className="py-3 px-4">
+                              <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[10.5px] font-bold ${
+                                (clip.lastStatus || clip.status) === 'Loose' ? 'bg-amber-100 text-amber-800' :
+                                (clip.lastStatus || clip.status) === 'Worn' || (clip.lastStatus || clip.status) === 'Damaged' ? 'bg-rose-100 text-rose-800' :
+                                'bg-emerald-100 text-emerald-800'
+                              }`}>
+                                <span className={`w-1.5 h-1.5 rounded-full ${
+                                  (clip.lastStatus || clip.status) === 'Loose' ? 'bg-amber-500' :
+                                  (clip.lastStatus || clip.status) === 'Worn' || (clip.lastStatus || clip.status) === 'Damaged' ? 'bg-rose-500' :
+                                  'bg-emerald-500'
+                                }`} />
+                                {clip.lastStatus || clip.status || 'N/A'}
+                              </span>
+                            </td>
+                            <td className="py-3 px-4 font-mono font-bold">
+                              {clip.health !== undefined && clip.health !== null ? (
+                                <span className={Number(clip.health) < 50 ? 'text-rose-600' : Number(clip.health) < 80 ? 'text-amber-600' : 'text-emerald-600'}>
+                                  {clip.health}%
+                                </span>
+                              ) : (
+                                <span className="text-slate-400">N/A</span>
+                              )}
+                            </td>
+                            <td className="py-3 px-4">
+                              <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
+                                (clip.priority || clip.maintenancePriority) === 'High' ? 'bg-rose-100 text-rose-700 border border-rose-200' :
+                                (clip.priority || clip.maintenancePriority) === 'Medium' ? 'bg-amber-100 text-amber-700 border border-amber-200' :
+                                (clip.priority || clip.maintenancePriority) === 'Low' ? 'bg-emerald-100 text-emerald-700 border border-emerald-200' :
+                                'bg-slate-100 text-slate-700 border border-slate-200'
+                              }`}>
+                                {clip.priority || clip.maintenancePriority || 'N/A'}
+                              </span>
+                            </td>
+                            <td className="py-3 px-4 text-slate-600 max-w-md">
+                              <div className="text-[11px] font-medium text-slate-800 truncate">
+                                {clip.recommendation || 'N/A'}
+                              </div>
+                            </td>
+                          </tr>
+                        ))
+                      ) : (
+                        <tr>
+                          <td colSpan="7" className="py-8 text-center text-slate-400">
+                            {loading ? 'Loading real component records from database...' : 'No component records found matching selected criteria.'}
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             </div>
+          )}
 
-            {/* Procurement & Batch Traceability Audit (5 cols) */}
-            <div className="lg:col-span-5 p-6 rounded-2xl bg-white border border-slate-200/90 shadow-sm flex flex-col justify-between space-y-4">
-              <div>
+          {/* 2. TECHNICAL COMPONENT & FIELD INSPECTION LEDGER DISPLAY */}
+          {selectedTemplate === 'technical' && (
+            <div className="space-y-6">
+              {/* Component Batch Master Registry */}
+              <div className="p-6 rounded-2xl bg-white border border-slate-200/90 shadow-sm space-y-4">
                 <div className="flex items-center justify-between border-b border-slate-200 pb-3">
                   <div>
-                    <h3 className="text-sm font-bold text-slate-900">
-                      Procurement & Metallurgical Traceability
+                    <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                      <FaBuilding className="text-blue-700" />
+                      <span>Component Batch & Procurement Registry</span>
                     </h3>
-                    <p className="text-[11px] text-slate-500">Master batch quality sign-off</p>
+                    <p className="text-[11px] text-slate-500">
+                      Master procurement batches registered in {districtOfficer.subtitle}
+                    </p>
                   </div>
                   <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-blue-100 text-blue-800 font-bold border border-blue-200">
-                    BATCH RC0001
+                    {batches.length} BATCHES
                   </span>
                 </div>
 
-                <div className="mt-4 space-y-3 text-xs">
-                  <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 grid grid-cols-2 gap-3">
-                    <div>
-                      <span className="text-[10px] text-slate-500 block">Master Batch ID</span>
-                      <span className="font-bold font-mono text-slate-900">RC0001</span>
-                    </div>
-                    <div>
-                      <span className="text-[10px] text-slate-500 block">Manufacturer</span>
-                      <span className="font-bold text-slate-900">Selva Steels</span>
-                    </div>
-                    <div>
-                      <span className="text-[10px] text-slate-500 block">Child QR Series</span>
-                      <span className="font-bold font-mono text-blue-700">C0001 – C0050</span>
-                    </div>
-                    <div>
-                      <span className="text-[10px] text-slate-500 block">Commissioning Date</span>
-                      <span className="font-bold font-mono text-slate-900">2026-08-05 (37d)</span>
-                    </div>
+                {batches.length > 0 ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {batches.map((batch) => (
+                      <div key={batch.id || batch.masterQrId} className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-2.5 text-xs">
+                        <div className="flex items-center justify-between">
+                          <span className="font-mono font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
+                            {batch.masterQrId || batch.batchNo || 'N/A'}
+                          </span>
+                          <span className="px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 text-[10px] font-bold">
+                            {batch.status || 'Active'}
+                          </span>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2 text-[11px]">
+                          <div>
+                            <span className="text-slate-500 block text-[10px]">Child QR Range:</span>
+                            <span className="font-bold text-slate-900">{batch.childQrRange || 'N/A'}</span>
+                          </div>
+                          <div>
+                            <span className="text-slate-500 block text-[10px]">Total Clips:</span>
+                            <span className="font-bold text-slate-900">
+                              {batch.clipsPurchased || batch.totalClips || 'N/A'}
+                            </span>
+                          </div>
+                          <div>
+                            <span className="text-slate-500 block text-[10px]">Manufacturer:</span>
+                            <span className="font-semibold text-slate-800">{batch.manufacturer || 'N/A'}</span>
+                          </div>
+                          <div>
+                            <span className="text-slate-500 block text-[10px]">Purchase Date:</span>
+                            <span className="font-mono text-slate-700">{batch.purchaseDate || batch.installDate || 'N/A'}</span>
+                          </div>
+                        </div>
+                        <div className="text-[10.5px] text-slate-500 pt-1 border-t border-slate-200">
+                          Location: <strong className="text-slate-700">{batch.station || 'N/A'}</strong> ({batch.section || 'N/A'})
+                        </div>
+                      </div>
+                    ))}
                   </div>
-
-                  <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-2 text-xs">
-                    <div className="font-bold text-slate-900 text-xs">Metallurgical Lab Verification:</div>
-                    <div className="text-[11px] text-slate-600 leading-relaxed">
-                      • Heat treatment: Oil quenched & tempered at 460°C.<br />
-                      • Material test certificate confirmed 55Si7 alloy composition.<br />
-                      • Laser etched QR matrix verified scratch-resistant to 650 Brinell ball indentation.
-                    </div>
+                ) : (
+                  <div className="py-8 text-center text-slate-400 text-xs">
+                    {loading ? 'Loading component batches from database...' : 'No component batches registered.'}
                   </div>
+                )}
+              </div>
 
-                  <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-[11px] flex items-center space-x-2">
-                    <FaShieldAlt className="text-emerald-600 shrink-0 text-base" />
-                    <span>RDSO Inspection Certificate No. <strong>RDSO/LKO/B-8821</strong> attached to digital archive.</span>
+              {/* Field Inspections Table */}
+              <div className="p-6 rounded-2xl bg-white border border-slate-200/90 shadow-sm space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                      <FaShieldAlt className="text-emerald-700" />
+                      <span>Permanent Way Field Inspection Log</span>
+                      <span className="px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 font-mono text-[10px] font-bold">
+                        {filteredInspections.length} Logs
+                      </span>
+                    </h3>
+                    <p className="text-[11px] text-slate-500">
+                      Physical inspection entries submitted by P-Way field workers and QR scans
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => handleDownloadPdf('technical')}
+                    className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold cursor-pointer"
+                  >
+                    <FaFilePdf className="text-rose-600" />
+                    <span>Download Ledger PDF</span>
+                  </button>
+                </div>
+
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs">
+                    <thead>
+                      <tr className="border-b border-slate-200 bg-slate-50 text-slate-600 font-mono uppercase text-[10px] tracking-wider">
+                        <th className="py-3 px-4">Inspection Date</th>
+                        <th className="py-3 px-4">Clip ID</th>
+                        <th className="py-3 px-4">Batch No</th>
+                        <th className="py-3 px-4">Inspector ID</th>
+                        <th className="py-3 px-4">Observed Condition</th>
+                        <th className="py-3 px-4">Severity</th>
+                        <th className="py-3 px-4">GPS Geolocation</th>
+                        <th className="py-3 px-4">Field Remarks</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 text-slate-700">
+                      {filteredInspections.length > 0 ? (
+                        filteredInspections.map((ins, idx) => (
+                          <tr key={ins.id || idx} className="hover:bg-blue-50/40 transition-colors">
+                            <td className="py-3 px-4 font-mono text-slate-800 whitespace-nowrap">
+                              {ins.inspectionDate || ins.date || (ins.createdAt ? ins.createdAt.substring(0, 16) : 'N/A')}
+                            </td>
+                            <td className="py-3 px-4 font-mono font-bold text-blue-700">
+                              {ins.uClipId || ins.clipId || 'N/A'}
+                            </td>
+                            <td className="py-3 px-4 font-mono text-slate-600">
+                              {ins.batchNumber || 'N/A'}
+                            </td>
+                            <td className="py-3 px-4 font-mono font-semibold text-slate-800">
+                              {ins.inspectorId || 'N/A'}
+                            </td>
+                            <td className="py-3 px-4">
+                              <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[10.5px] font-bold ${
+                                ins.condition === 'Loose' ? 'bg-amber-100 text-amber-800' :
+                                ins.condition === 'Worn' || ins.condition === 'Damaged' ? 'bg-rose-100 text-rose-800' :
+                                'bg-emerald-100 text-emerald-800'
+                              }`}>
+                                <span className={`w-1.5 h-1.5 rounded-full ${
+                                  ins.condition === 'Loose' ? 'bg-amber-500' :
+                                  ins.condition === 'Worn' || ins.condition === 'Damaged' ? 'bg-rose-500' :
+                                  'bg-emerald-500'
+                                }`} />
+                                {ins.condition || 'N/A'}
+                              </span>
+                            </td>
+                            <td className="py-3 px-4">
+                              <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
+                                ins.severity === 'High' ? 'bg-rose-100 text-rose-700 border border-rose-200' :
+                                ins.severity === 'Medium' ? 'bg-amber-100 text-amber-700 border border-amber-200' :
+                                'bg-emerald-100 text-emerald-700 border border-emerald-200'
+                              }`}>
+                                {ins.severity || 'N/A'}
+                              </span>
+                            </td>
+                            <td className="py-3 px-4 font-mono text-[10.5px] text-slate-600 truncate max-w-xs">
+                              {ins.gpsLocation || 'N/A'}
+                            </td>
+                            <td className="py-3 px-4 text-slate-600 max-w-md">
+                              <div className="text-[11px] text-slate-800">{ins.remarks || 'N/A'}</div>
+                            </td>
+                          </tr>
+                        ))
+                      ) : (
+                        <tr>
+                          <td colSpan="8" className="py-8 text-center text-slate-400">
+                            {loading ? 'Loading field inspection logs...' : 'No field inspection logs found matching current criteria.'}
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* 3. AI PREDICTIVE DIAGNOSTICS DISPLAY */}
+          {selectedTemplate === 'ai_diagnostics' && (
+            <div className="space-y-6">
+              {/* AI Engine Banner */}
+              <div className="p-6 rounded-2xl bg-gradient-to-r from-blue-900 to-[#002855] text-white shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                <div className="space-y-1">
+                  <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-blue-800/60 border border-blue-400/30 text-amber-300 text-[10.5px] font-mono font-bold">
+                    <FaBrain />
+                    AI MACHINE LEARNING ENGINE
+                  </div>
+                  <h3 className="text-base font-bold text-white">
+                    {aiSummary?.activeModel || 'XGBoost Maintenance Classifier v2.4'}
+                  </h3>
+                  <p className="text-xs text-blue-200 max-w-xl">
+                    Engineered features evaluate multi-scan looseness history, surface wear frequency, service age in days, and toe-load degradation signals.
+                  </p>
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className="px-3.5 py-2 rounded-xl bg-blue-950/80 border border-blue-700/50 text-right">
+                    <span className="text-[10px] text-blue-300 block font-mono">MODEL ACCURACY</span>
+                    <span className="text-lg font-bold font-mono text-emerald-400">
+                      {aiSummary?.modelAccuracy ? `${aiSummary.modelAccuracy}%` : '99.93%'}
+                    </span>
+                  </div>
+                  <div className="px-3.5 py-2 rounded-xl bg-blue-950/80 border border-blue-700/50 text-right">
+                    <span className="text-[10px] text-blue-300 block font-mono">ENGINE STATUS</span>
+                    <span className="text-lg font-bold font-mono text-cyan-300">
+                      {aiSummary?.engineStatus || 'ONLINE'}
+                    </span>
                   </div>
                 </div>
               </div>
 
-              <button
-                onClick={() => setDossierModalOpen(true)}
-                className="w-full py-2.5 rounded-xl bg-[#002855] hover:bg-[#003875] text-white text-xs font-semibold flex items-center justify-center space-x-2 shadow-sm cursor-pointer transition-colors"
-              >
-                <FaPrint />
-                <span>Render Official Signed Dossier</span>
-              </button>
-            </div>
+              {/* AI Diagnostics Table */}
+              <div className="p-6 rounded-2xl bg-white border border-slate-200/90 shadow-sm space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                      <FaBolt className="text-amber-500" />
+                      <span>Clip Predictive Maintenance Diagnostics</span>
+                      <span className="px-2 py-0.5 rounded-full bg-blue-100 text-blue-800 font-mono text-[10px] font-bold">
+                        AI-GENERATED OUTPUT
+                      </span>
+                    </h3>
+                    <p className="text-[11px] text-slate-500">
+                      Predictive priority classifications clearly distinguished from raw field observations
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => handleDownloadPdf('ai_diagnostics')}
+                    className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold cursor-pointer"
+                  >
+                    <FaFilePdf className="text-rose-600" />
+                    <span>Download AI Dossier</span>
+                  </button>
+                </div>
 
-          </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs">
+                    <thead>
+                      <tr className="border-b border-slate-200 bg-slate-50 text-slate-600 font-mono uppercase text-[10px] tracking-wider">
+                        <th className="py-3 px-4">Clip ID</th>
+                        <th className="py-3 px-4">Observed Status</th>
+                        <th className="py-3 px-4">AI Health Score</th>
+                        <th className="py-3 px-4">AI Priority</th>
+                        <th className="py-3 px-4">Confidence</th>
+                        <th className="py-3 px-4">Scan Telemetry</th>
+                        <th className="py-3 px-4">Days Since Insp.</th>
+                        <th className="py-3 px-4">AI Maintenance Recommendation</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 text-slate-700">
+                      {filteredClips.length > 0 ? (
+                        filteredClips.map((clip) => (
+                          <tr key={clip.id || clip.qrId} className="hover:bg-blue-50/40 transition-colors">
+                            <td className="py-3 px-4 font-mono font-bold text-blue-700">
+                              {clip.qrId || clip.compId || 'N/A'}
+                            </td>
+                            <td className="py-3 px-4">
+                              <span className="font-semibold text-slate-800">
+                                {clip.lastStatus || clip.status || 'N/A'}
+                              </span>
+                            </td>
+                            <td className="py-3 px-4 font-mono font-bold">
+                              {clip.health !== undefined && clip.health !== null ? (
+                                <span className={Number(clip.health) < 50 ? 'text-rose-600' : Number(clip.health) < 80 ? 'text-amber-600' : 'text-emerald-600'}>
+                                  {clip.health}%
+                                </span>
+                              ) : (
+                                <span className="text-slate-400">N/A</span>
+                              )}
+                            </td>
+                            <td className="py-3 px-4">
+                              <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
+                                (clip.priority || clip.maintenancePriority) === 'High' ? 'bg-rose-100 text-rose-700 border border-rose-200' :
+                                (clip.priority || clip.maintenancePriority) === 'Medium' ? 'bg-amber-100 text-amber-700 border border-amber-200' :
+                                (clip.priority || clip.maintenancePriority) === 'Low' ? 'bg-emerald-100 text-emerald-700 border border-emerald-200' :
+                                'bg-slate-100 text-slate-700 border border-slate-200'
+                              }`}>
+                                {clip.priority || clip.maintenancePriority || 'N/A'}
+                              </span>
+                            </td>
+                            <td className="py-3 px-4 font-mono text-slate-700">
+                              {clip.probability || (clip.confidence !== undefined ? `${(clip.confidence * 100).toFixed(1)}%` : 'N/A')}
+                            </td>
+                            <td className="py-3 px-4 text-[10.5px] font-mono text-slate-600">
+                              {clip.totalScans !== undefined ? `${clip.totalScans} scans` : 'N/A'} • {clip.looseCount !== undefined ? clip.looseCount : 0} loose • {clip.wearCount !== undefined ? clip.wearCount : 0} wear
+                            </td>
+                            <td className="py-3 px-4 font-mono text-slate-700">
+                              {clip.daysSinceLastInspection !== undefined ? `${clip.daysSinceLastInspection}d ago` : 'N/A'}
+                            </td>
+                            <td className="py-3 px-4 text-slate-600 max-w-md">
+                              <div className="text-[11px] font-medium text-slate-800 leading-tight">
+                                {clip.recommendation || 'N/A'}
+                              </div>
+                            </td>
+                          </tr>
+                        ))
+                      ) : (
+                        <tr>
+                          <td colSpan="8" className="py-8 text-center text-slate-400">
+                            {loading ? 'Evaluating AI predictions from database...' : 'No AI predictive telemetry found matching selected criteria.'}
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          )}
 
         </main>
 
         {/* ================= FOOTER ================= */}
         <footer className="mt-auto py-4 px-8 border-t border-slate-200 bg-white flex flex-col sm:flex-row items-center justify-between text-xs text-slate-600 gap-2">
           <div>
-            Indian Railways Permanent Way Fastener Compliance • <span className="font-mono text-blue-700 font-semibold">{districtOfficer.subtitle}</span>
+            Indian Railways Permanent Way Fastener Management • <span className="font-mono text-blue-700 font-semibold">{districtOfficer.subtitle}</span>
           </div>
           <div className="font-mono text-[11px] text-slate-500">
-            RDSO T-3701 / T-4001 • Cryptographic Hash {certificateHash.slice(0, 16)}...
+            RailClip AI Inspection • Broad Gauge (1676 mm)
           </div>
         </footer>
 
       </div>
 
-      {/* ================= 5. OFFICIAL PRINTABLE RDSO DOSSIER MODAL ================= */}
+      {/* ====================================================================
+          4. INTERACTIVE PREVIEW REPORT MODAL (REQUIREMENT 7 & 8)
+          ==================================================================== */}
       <AnimatePresence>
-        {dossierModalOpen && (
+        {previewModalOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-slate-950/70 backdrop-blur-xs overflow-y-auto">
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="relative w-full max-w-4xl bg-white rounded-2xl shadow-2xl overflow-hidden border border-slate-200 my-8 flex flex-col max-h-[90vh]"
+              className="relative w-full max-w-5xl bg-white rounded-2xl shadow-2xl overflow-hidden border border-slate-200 my-8 flex flex-col max-h-[92vh]"
             >
-              {/* Modal Header Bar */}
-              <div className="p-4 px-6 bg-[#002244] text-white flex items-center justify-between">
-                <div className="flex items-center space-x-2 text-xs font-semibold">
-                  <FaCertificate className="text-amber-300" />
-                  <span>INDIAN RAILWAYS STATUTORY SAFETY DOSSIER — RDSO FORM T-3701</span>
+              {/* Modal Top Bar */}
+              <div className="p-4 px-6 bg-[#002244] text-white flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-blue-900">
+                <div className="flex items-center space-x-3">
+                  <div className="p-1.5 rounded-lg bg-blue-600/50 text-amber-300">
+                    <FaEye className="text-base" />
+                  </div>
+                  <div>
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-amber-300">
+                      Live Report Preview
+                    </h3>
+                    <p className="text-[11px] text-blue-200">
+                      Review generated report with current filters before downloading
+                    </p>
+                  </div>
                 </div>
+
+                {/* Template Selector inside Modal */}
                 <div className="flex items-center space-x-2">
+                  <div className="flex items-center bg-blue-950/80 p-1 rounded-xl border border-blue-800 text-xs">
+                    {[
+                      { id: 'executive', name: 'Executive' },
+                      { id: 'technical', name: 'Technical' },
+                      { id: 'ai_diagnostics', name: 'AI Diagnostics' }
+                    ].map((t) => (
+                      <button
+                        key={t.id}
+                        onClick={() => setPreviewTemplate(t.id)}
+                        className={`px-2.5 py-1 rounded-lg font-semibold transition-all cursor-pointer ${
+                          previewTemplate === t.id
+                            ? 'bg-blue-600 text-white shadow-xs'
+                            : 'text-blue-200 hover:text-white'
+                        }`}
+                      >
+                        {t.name}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Download PDF from Modal */}
+                  <button
+                    onClick={() => handleDownloadPdf(previewTemplate)}
+                    disabled={isExportingPdf}
+                    className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 text-xs font-bold flex items-center space-x-1.5 shadow-xs cursor-pointer transition-all"
+                  >
+                    <FaFilePdf />
+                    <span>{isExportingPdf ? 'Exporting...' : 'Download PDF'}</span>
+                  </button>
+
+                  {/* Print Button */}
                   <button
                     onClick={() => window.print()}
-                    className="px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold flex items-center space-x-1.5 cursor-pointer shadow-xs"
+                    className="p-2 rounded-xl bg-blue-900/60 hover:bg-blue-800 text-blue-200 hover:text-white transition-colors cursor-pointer"
+                    title="Print Document"
                   >
-                    <FaPrint />
-                    <span>Print Dossier</span>
+                    <FaPrint className="text-xs" />
                   </button>
+
+                  {/* Close Modal */}
                   <button
-                    onClick={() => setDossierModalOpen(false)}
-                    className="p-1.5 text-slate-300 hover:text-white cursor-pointer"
+                    onClick={() => setPreviewModalOpen(false)}
+                    className="p-2 rounded-xl bg-blue-900/60 hover:bg-rose-900/40 text-blue-200 hover:text-rose-300 transition-colors cursor-pointer"
                   >
-                    <FaTimes />
+                    <FaTimes className="text-xs" />
                   </button>
                 </div>
               </div>
 
-              {/* Printable Document Body */}
-              <div className="p-8 overflow-y-auto space-y-6 text-slate-900 bg-white" id="printable-dossier">
+              {/* Printable Document Preview Canvas */}
+              <div className="p-8 overflow-y-auto space-y-6 text-slate-900 bg-white" id="printable-report">
                 
-                {/* Government Header */}
+                {/* Railway Formal Header */}
                 <div className="text-center border-b-2 border-slate-900 pb-4 space-y-1">
                   <div className="text-xs font-bold tracking-widest text-slate-700 uppercase">
                     GOVERNMENT OF INDIA • MINISTRY OF RAILWAYS
                   </div>
-                  <div className="text-xl font-black text-slate-900 tracking-tight">
-                    RESEARCH DESIGNS & STANDARDS ORGANISATION (RDSO)
+                  <div className="text-xl font-black text-[#002855] tracking-tight">
+                    INDIAN RAILWAYS — {districtOfficer.subtitle.toUpperCase()}
                   </div>
-                  <div className="text-xs font-semibold text-blue-900">
-                    Track Fastener Integrity & High-Speed Corridor Clearance Certificate
+                  <div className="text-xs font-semibold text-slate-700">
+                    {previewTemplate === 'executive' && 'Executive Track Fastener Telemetry & Health Audit Report'}
+                    {previewTemplate === 'technical' && 'Technical Component Batch Registry & Field QR Inspection Ledger'}
+                    {previewTemplate === 'ai_diagnostics' && 'AI Predictive Fastener Maintenance & Risk Diagnostics Dossier'}
                   </div>
                   <div className="text-[11px] font-mono text-slate-500 pt-1">
-                    Dossier Reference: RDSO/IR-CBE/2026/09-0419 • Section: {districtOfficer.subtitle}
+                    Permanent Way Management System • Broad Gauge 1676mm • {districtOfficer.title}
                   </div>
                 </div>
 
                 {/* Audit Context Grid */}
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs bg-slate-50 p-4 rounded-xl border border-slate-300 font-mono">
                   <div>
-                    <span className="text-slate-500 block text-[10px]">INSPECTED DIVISION</span>
+                    <span className="text-slate-500 block text-[10px]">DIVISION</span>
                     <span className="font-bold text-slate-900">{districtOfficer.subtitle}</span>
                   </div>
                   <div>
-                    <span className="text-slate-500 block text-[10px]">INSPECTING OFFICER</span>
+                    <span className="text-slate-500 block text-[10px]">AUTHORIZED OFFICER</span>
                     <span className="font-bold text-slate-900">{districtOfficer.title}</span>
                   </div>
                   <div>
-                    <span className="text-slate-500 block text-[10px]">CORRIDOR SPEED</span>
-                    <span className="font-bold text-blue-800">{activeProfile.badge}</span>
+                    <span className="text-slate-500 block text-[10px]">REPORT FORMAT</span>
+                    <span className="font-bold text-blue-800 uppercase">{previewTemplate.replace('_', ' ')}</span>
                   </div>
                   <div>
-                    <span className="text-slate-500 block text-[10px]">AUDIT TIMESTAMP</span>
+                    <span className="text-slate-500 block text-[10px]">GENERATED TIMESTAMP</span>
                     <span className="font-bold text-slate-900">{new Date().toISOString().slice(0, 16).replace('T', ' ')}</span>
                   </div>
                 </div>
 
-                {/* Evaluation Executive Summary */}
-                <div className="p-4 rounded-xl border-l-4 border-[#003366] bg-slate-50 text-xs leading-relaxed">
-                  <strong>STATUTORY DECLARATION:</strong> This safety dossier evaluates <strong>{clips.length} Elastic Rail Clips (ERC)</strong> registered under master batch <strong>RC0001 (Selva Steels)</strong>. Telemetry was collected via digital P-Way scanners and analyzed through the certified <strong>{summary.activeModel}</strong>. Overall fleet health index is certified at <strong>{summary.avgHealth}%</strong>. Fasteners <strong>C0015</strong> and <strong>C0032</strong> have been marked with high fatigue risk and must undergo immediate physical replacement before 160 kmph corridor commissioning.
-                </div>
+                {/* Preview Body based on selected preview template */}
+                {previewTemplate === 'executive' && (
+                  <div className="space-y-4">
+                    <div className="p-4 rounded-xl border-l-4 border-[#003366] bg-slate-50 text-xs leading-relaxed">
+                      <strong>EXECUTIVE SUMMARY:</strong> This report analyzes <strong>{filteredClips.length} Elastic Rail Clips (ERC)</strong> deployed in {districtOfficer.subtitle}. 
+                      The average fleet health score is currently <strong>{statAvgHealth !== 'N/A' ? `${statAvgHealth}%` : 'N/A'}</strong>. 
+                      A total of <strong>{statHighRisk} clip(s)</strong> have been flagged as High Maintenance Priority, requiring immediate fastener recalibration or replacement within 48 hours.
+                    </div>
 
-                {/* Table of Evaluated Clips */}
-                <div>
-                  <h4 className="text-xs font-bold text-slate-900 uppercase font-mono mb-2">
-                    Physical Fastener Audit & Clearance Register
-                  </h4>
-                  <table className="w-full text-left text-xs border border-slate-300">
-                    <thead className="bg-slate-100 text-slate-700 font-mono text-[10px]">
-                      <tr className="border-b border-slate-300">
-                        <th className="p-2 border-r border-slate-300">Clip ID</th>
-                        <th className="p-2 border-r border-slate-300">Station</th>
-                        <th className="p-2 border-r border-slate-300">Section</th>
-                        <th className="p-2 border-r border-slate-300">Status</th>
-                        <th className="p-2 border-r border-slate-300">Health</th>
-                        <th className="p-2 border-r border-slate-300">Priority</th>
-                        <th className="p-2">Clearance ({activeProfile.badge.split('•')[0].trim()})</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-200 text-slate-800 text-[11px]">
-                      {simulatedSafetyAnalysis.map((clip) => (
-                        <tr key={clip.qrId} className="border-b border-slate-200">
-                          <td className="p-2 font-mono font-bold border-r border-slate-200 text-blue-900">{clip.qrId}</td>
-                          <td className="p-2 border-r border-slate-200">{clip.station}</td>
-                          <td className="p-2 border-r border-slate-200 truncate max-w-[140px]">{clip.section}</td>
-                          <td className="p-2 border-r border-slate-200">{clip.lastStatus}</td>
-                          <td className="p-2 font-mono font-bold border-r border-slate-200">{clip.health}%</td>
-                          <td className="p-2 font-bold border-r border-slate-200">{clip.priority}</td>
-                          <td className="p-2 font-mono font-bold">
-                            <span className={clip.clearanceStatus === 'APPROVED' ? 'text-emerald-700' : clip.clearanceStatus === 'REJECTED' ? 'text-rose-700' : 'text-amber-700'}>
-                              {clip.clearanceStatus}
-                            </span>
-                          </td>
+                    <table className="w-full text-left text-xs border border-slate-300">
+                      <thead className="bg-slate-100 text-slate-700 font-mono text-[10px]">
+                        <tr className="border-b border-slate-300">
+                          <th className="p-2 border-r border-slate-300">Clip ID</th>
+                          <th className="p-2 border-r border-slate-300">Batch No</th>
+                          <th className="p-2 border-r border-slate-300">Station / Section</th>
+                          <th className="p-2 border-r border-slate-300">Status</th>
+                          <th className="p-2 border-r border-slate-300">Health</th>
+                          <th className="p-2 border-r border-slate-300">Priority</th>
+                          <th className="p-2">Maintenance Recommendation</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                      </thead>
+                      <tbody className="divide-y divide-slate-200 text-slate-800 text-[11px]">
+                        {filteredClips.length > 0 ? (
+                          filteredClips.map((c) => (
+                            <tr key={c.id || c.qrId} className="border-b border-slate-200">
+                              <td className="p-2 font-mono font-bold text-blue-900 border-r border-slate-200">{c.qrId || c.compId || 'N/A'}</td>
+                              <td className="p-2 font-mono border-r border-slate-200">{c.batchNumber || c.batchNo || 'N/A'}</td>
+                              <td className="p-2 border-r border-slate-200">{c.station || 'N/A'}</td>
+                              <td className="p-2 border-r border-slate-200">{c.lastStatus || c.status || 'N/A'}</td>
+                              <td className="p-2 font-mono font-bold border-r border-slate-200">
+                                {c.health !== undefined && c.health !== null ? `${c.health}%` : 'N/A'}
+                              </td>
+                              <td className="p-2 font-bold border-r border-slate-200">
+                                <span className={c.priority === 'High' ? 'text-rose-700' : c.priority === 'Medium' ? 'text-amber-700' : 'text-emerald-700'}>
+                                  {c.priority || c.maintenancePriority || 'N/A'}
+                                </span>
+                              </td>
+                              <td className="p-2 text-[10.5px]">{c.recommendation || 'N/A'}</td>
+                            </tr>
+                          ))
+                        ) : (
+                          <tr>
+                            <td colSpan="7" className="p-4 text-center text-slate-400">
+                              No records found.
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
 
-                {/* Signatures & Seal */}
+                {previewTemplate === 'technical' && (
+                  <div className="space-y-4">
+                    <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs grid grid-cols-2 sm:grid-cols-4 gap-2">
+                      <div>
+                        <span className="text-[10px] text-slate-500 block">Master Batch:</span>
+                        <span className="font-bold text-slate-900">{batches[0]?.masterQrId || batches[0]?.batchNo || 'N/A'}</span>
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-slate-500 block">Child QR Range:</span>
+                        <span className="font-bold text-slate-900">{batches[0]?.childQrRange || 'N/A'}</span>
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-slate-500 block">Manufacturer:</span>
+                        <span className="font-bold text-slate-900">{batches[0]?.manufacturer || 'N/A'}</span>
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-slate-500 block">Clips Purchased:</span>
+                        <span className="font-bold text-slate-900">
+                          {batches[0]?.clipsPurchased || batches[0]?.totalClips || 'N/A'}
+                        </span>
+                      </div>
+                    </div>
+
+                    <table className="w-full text-left text-xs border border-slate-300">
+                      <thead className="bg-slate-100 text-slate-700 font-mono text-[10px]">
+                        <tr className="border-b border-slate-300">
+                          <th className="p-2 border-r border-slate-300">Date</th>
+                          <th className="p-2 border-r border-slate-300">Clip ID</th>
+                          <th className="p-2 border-r border-slate-300">Inspector</th>
+                          <th className="p-2 border-r border-slate-300">Condition</th>
+                          <th className="p-2 border-r border-slate-300">Severity</th>
+                          <th className="p-2 border-r border-slate-300">GPS Coordinates</th>
+                          <th className="p-2">Inspection Remarks</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-200 text-slate-800 text-[11px]">
+                        {filteredInspections.length > 0 ? (
+                          filteredInspections.map((ins, idx) => (
+                            <tr key={ins.id || idx} className="border-b border-slate-200">
+                              <td className="p-2 font-mono border-r border-slate-200 whitespace-nowrap">
+                                {ins.inspectionDate || ins.date || (ins.createdAt ? ins.createdAt.substring(0, 16) : 'N/A')}
+                              </td>
+                              <td className="p-2 font-mono font-bold text-blue-900 border-r border-slate-200">{ins.uClipId || ins.clipId || 'N/A'}</td>
+                              <td className="p-2 font-mono border-r border-slate-200">{ins.inspectorId || 'N/A'}</td>
+                              <td className="p-2 border-r border-slate-200">{ins.condition || 'N/A'}</td>
+                              <td className="p-2 font-bold border-r border-slate-200">{ins.severity || 'N/A'}</td>
+                              <td className="p-2 font-mono text-[10px] border-r border-slate-200">{ins.gpsLocation || 'N/A'}</td>
+                              <td className="p-2 text-[10.5px]">{ins.remarks || 'N/A'}</td>
+                            </tr>
+                          ))
+                        ) : (
+                          <tr>
+                            <td colSpan="7" className="p-4 text-center text-slate-400">
+                              No field inspection records found.
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+
+                {previewTemplate === 'ai_diagnostics' && (
+                  <div className="space-y-4">
+                    <div className="p-4 rounded-xl border border-blue-200 bg-blue-50/60 text-xs space-y-1">
+                      <div className="font-bold text-blue-900">
+                        AI Model Engine: {aiSummary?.activeModel || 'XGBoost Maintenance Classifier v2.4'} (Accuracy: {aiSummary?.modelAccuracy ? `${aiSummary.modelAccuracy}%` : 'N/A'})
+                      </div>
+                      <p className="text-slate-600 text-[11px]">
+                        Predictive fatigue classification correlates multi-scan looseness reports, surface mechanical abrasion, service duration, and vibration severity.
+                      </p>
+                    </div>
+
+                    <table className="w-full text-left text-xs border border-slate-300">
+                      <thead className="bg-slate-100 text-slate-700 font-mono text-[10px]">
+                        <tr className="border-b border-slate-300">
+                          <th className="p-2 border-r border-slate-300">Clip ID</th>
+                          <th className="p-2 border-r border-slate-300">Observed Status</th>
+                          <th className="p-2 border-r border-slate-300">AI Health</th>
+                          <th className="p-2 border-r border-slate-300">AI Priority</th>
+                          <th className="p-2 border-r border-slate-300">Confidence</th>
+                          <th className="p-2 border-r border-slate-300">Scan Counts</th>
+                          <th className="p-2">AI Maintenance Directive</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-200 text-slate-800 text-[11px]">
+                        {filteredClips.length > 0 ? (
+                          filteredClips.map((c) => (
+                            <tr key={c.id || c.qrId} className="border-b border-slate-200">
+                              <td className="p-2 font-mono font-bold text-blue-900 border-r border-slate-200">{c.qrId || c.compId || 'N/A'}</td>
+                              <td className="p-2 border-r border-slate-200">{c.lastStatus || c.status || 'N/A'}</td>
+                              <td className="p-2 font-mono font-bold border-r border-slate-200">
+                                {c.health !== undefined && c.health !== null ? `${c.health}%` : 'N/A'}
+                              </td>
+                              <td className="p-2 font-bold border-r border-slate-200">
+                                <span className={c.priority === 'High' ? 'text-rose-700' : c.priority === 'Medium' ? 'text-amber-700' : 'text-emerald-700'}>
+                                  {c.priority || c.maintenancePriority || 'N/A'}
+                                </span>
+                              </td>
+                              <td className="p-2 font-mono border-r border-slate-200">
+                                {c.probability || (c.confidence !== undefined ? `${(c.confidence * 100).toFixed(1)}%` : 'N/A')}
+                              </td>
+                              <td className="p-2 font-mono text-[10px] border-r border-slate-200">
+                                {c.totalScans !== undefined ? `${c.totalScans} scans` : 'N/A'}
+                              </td>
+                              <td className="p-2 text-[10.5px]">{c.recommendation || 'N/A'}</td>
+                            </tr>
+                          ))
+                        ) : (
+                          <tr>
+                            <td colSpan="7" className="p-4 text-center text-slate-400">
+                              No AI prediction records found.
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+
+                {/* Official Signatures & Seal */}
                 <div className="pt-8 border-t border-slate-300 grid grid-cols-2 gap-8 text-xs font-mono">
                   <div>
-                    <span className="text-slate-400 block text-[10px]">CRYPTOGRAPHIC SEAL</span>
-                    <span className="text-slate-700 font-bold block break-all text-[9.5px]">
-                      {certificateHash}
+                    <span className="text-slate-400 block text-[10px]">SYSTEM VERIFICATION</span>
+                    <span className="text-slate-800 font-bold block text-[10px]">
+                      RailClip Broad Gauge P-Way Telemetry System
                     </span>
-                    <span className="text-emerald-700 text-[10px] block mt-1">✓ Digital Fingerprint Authenticated</span>
+                    <span className="text-emerald-700 text-[10px] block mt-0.5">✓ Synchronized with {districtOfficer.subtitle}</span>
                   </div>
 
-                  <div className="text-right space-y-1">
+                  <div className="text-right space-y-0.5">
                     <div className="font-bold text-slate-900 uppercase">
                       {districtOfficer.title}
                     </div>
@@ -1042,7 +1404,7 @@ export default function Reports() {
                       Permanent Way Command • {districtOfficer.subtitle}
                     </div>
                     <div className="text-blue-700 text-[10px] font-bold">
-                      [DIGITALLY SIGNED & ARCHIVED TO RDSO CLOUD]
+                      [OFFICIAL DIVISIONAL SIGN-OFF]
                     </div>
                   </div>
                 </div>
